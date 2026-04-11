@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import InteractiveCodeViewer from "@/components/InteractiveCodeViewer";
 import type { Database } from "@/integrations/supabase/types";
 
 type Snippet = Database["public"]["Tables"]["snippets"]["Row"];
@@ -93,16 +94,11 @@ const SnippetView = () => {
           )}
 
           {activeTab === "code" && (
-            <div className="glass-panel rounded-2xl overflow-hidden">
-              <SyntaxHighlighter
-                style={oneDark}
-                language={lang}
-                showLineNumbers
-                customStyle={{ margin: 0, borderRadius: "1rem", fontSize: "0.8rem", background: "hsl(0 0% 8%)" }}
-              >
-                {snippet.code}
-              </SyntaxHighlighter>
-            </div>
+            <InteractiveCodeViewer
+              code={snippet.code}
+              language={snippet.language}
+              level={snippet.level}
+            />
           )}
         </div>
       </div>
