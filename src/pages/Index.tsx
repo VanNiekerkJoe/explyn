@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import IntroSplash, { shouldShowIntro } from "@/components/IntroSplash";
 
 const languages = [
   "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust",
@@ -25,6 +26,8 @@ const stats = [
 const Index = () => {
   const navigate = useNavigate();
   const [loggedIn, setLoggedIn] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
+  const [introDone, setIntroDone] = useState(!shouldShowIntro());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -38,6 +41,9 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
+      {showIntro && !introDone && (
+        <IntroSplash onComplete={() => { setShowIntro(false); setIntroDone(true); }} />
+      )}
       <div className="noise" aria-hidden="true" />
       <div className="bg-orb orb-1" aria-hidden="true" />
       <div className="bg-orb orb-2" aria-hidden="true" />
