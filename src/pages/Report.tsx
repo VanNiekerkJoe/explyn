@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useCredits } from "@/hooks/useCredits";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -30,6 +31,8 @@ const Report = () => {
   const filesRef = useRef<UploadedFile[]>([]);
   const levelRef = useRef<string>("beginner");
   const modeRef = useRef<string>("explain");
+  const { hasCredits, useCredit, remaining } = useCredits();
+  const [creditGated, setCreditGated] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("explyn_files");
@@ -87,6 +90,25 @@ const Report = () => {
   const analyzeCode = async (files: UploadedFile[], level: string, mode: string) => {
     setLoading(true);
     setProgress(10);
+
+    // Check credits (allow unauthenticated users a free pass for now)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && !hasCredits) {
+      setCreditGated(true);
+      setLoading(false);
+      return;
+    }
+
+    // Deduct credit for authenticated users
+    if (session) {
+      const success = await useCredit(1, `${mode} analysis`);
+      if (!success) {
+        setCreditGated(true);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const filesSummary = files.map((f) => ({
         path: f.path, language: f.language, content: f.content.slice(0, 8000),
@@ -230,6 +252,17 @@ const Report = () => {
               <span className="eyebrow">{MODE_LABELS[currentMode] || "Report"}</span>
               <span className="px-2 py-0.5 rounded-full border border-border text-[10px] text-muted-foreground capitalize">{levelRef.current}</span>
             </div>
+
+            {creditGated && (
+              <div className="glass-panel rounded-2xl p-8 text-center mb-8">
+                <Zap className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-semibold text-lg mb-2">Out of credits</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  You've used all your credits this month. Upgrade your plan or wait for the reset.
+                </p>
+                <button onClick={() => navigate("/pricing")} className="btn-primary">View plans</button>
+              </div>
+            )}
 
             {loading && (
               <div className="glass-panel rounded-2xl p-6 mb-8">
