@@ -9,6 +9,8 @@ import Report from "./pages/Report";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import SnippetView from "./pages/SnippetView";
+import ProjectView from "./pages/ProjectView";
+import ShareView from "./pages/ShareView";
 import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +29,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/snippet/:id" element={<SnippetView />} />
+          <Route path="/project/:id" element={<ProjectView />} />
+          <Route path="/share/:slug" element={<ShareView />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
