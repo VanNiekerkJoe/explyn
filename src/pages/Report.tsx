@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Zap } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Zap, Code2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { supabase } from "@/integrations/supabase/client";
+import InteractiveCodeViewer from "@/components/InteractiveCodeViewer";
 import type { UploadedFile } from "./Upload";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -33,6 +34,7 @@ const Report = () => {
   const modeRef = useRef<string>("explain");
   const { hasCredits, useCredit, remaining } = useCredits();
   const [creditGated, setCreditGated] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("explyn_files");
@@ -234,6 +236,9 @@ const Report = () => {
               <span className="font-bold text-foreground tracking-tight">explyn</span>
             </button>
             <div className="flex items-center gap-2">
+              <button onClick={() => setShowCode(!showCode)} className={`btn-ghost text-sm gap-2 ${showCode ? "text-foreground" : ""}`}>
+                <Code2 className="h-4 w-4" /> Code
+              </button>
               <button onClick={saveSnippet} disabled={saving || loading} className="btn-ghost text-sm gap-2 disabled:opacity-40">
                 <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
               </button>
@@ -308,6 +313,29 @@ const Report = () => {
                 <p className="text-muted-foreground">No report generated yet.</p>
               </div>
             ) : null}
+
+            {/* Interactive source code viewer */}
+            {showCode && filesRef.current.length > 0 && (
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Code2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="eyebrow">Interactive Source · Click any token to explain</span>
+                </div>
+                {filesRef.current.map((file, i) => (
+                  <InteractiveCodeViewer
+                    key={i}
+                    code={file.content}
+                    language={file.language}
+                    fileName={file.path}
+                    level={levelRef.current}
+                    onAskFollowUp={(question) => {
+                      setChatOpen(true);
+                      setChatInput(question);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Chat panel */}
