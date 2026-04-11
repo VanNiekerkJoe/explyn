@@ -124,9 +124,7 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
 };
 
 export function shouldShowIntro(): boolean {
-  const last = localStorage.getItem(STORAGE_KEY);
-  if (!last) return true;
-  return last !== new Date().toDateString();
+  return true;
 }
 
 export default IntroSplash;
