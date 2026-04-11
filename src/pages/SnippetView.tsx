@@ -7,7 +7,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import InteractiveCodeViewer from "@/components/InteractiveCodeViewer";
 import type { Database } from "@/integrations/supabase/types";
-import type { Database } from "@/integrations/supabase/types";
 
 type Snippet = Database["public"]["Tables"]["snippets"]["Row"];
 
