@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Code2, Bug, GraduationCap } from "lucide-react";
+import ShareButton from "@/components/ShareButton";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -51,11 +52,12 @@ const SnippetView = () => {
 
       <div className="relative z-10">
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-          <div className="max-w-5xl mx-auto px-6 h-16 flex items-center">
+          <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
             <button onClick={() => navigate("/dashboard")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" />
               <span className="font-bold text-foreground tracking-tight">explyn</span>
             </button>
+            <ShareButton snippetId={snippet.id} isPublic={(snippet as any).is_public} shareSlug={(snippet as any).share_slug} />
           </div>
         </nav>
 
