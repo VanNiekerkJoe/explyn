@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Code2, Bug, GraduationCap, Library, LogOut, User, Plus, Search, Trash2, FolderOpen, Zap, Layers } from "lucide-react";
+import { Code2, Bug, GraduationCap, Library, LogOut, Plus, Search, Trash2, FolderOpen, Zap, Layers } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useCredits } from "@/hooks/useCredits";
