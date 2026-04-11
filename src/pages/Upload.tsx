@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload as UploadIcon, FileCode, FolderOpen, ClipboardPaste, Trash2, ArrowLeft, ArrowRight, Code2, Bug, GraduationCap } from "lucide-react";
+import { Upload as UploadIcon, FileCode, FolderOpen, ClipboardPaste, Trash2, ArrowLeft, ArrowRight, Code2, Bug, GraduationCap, Github, Archive, Loader2, Link } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import JSZip from "jszip";
 
 export interface UploadedFile {
   path: string;
@@ -26,9 +28,28 @@ const LANGUAGE_MAP: Record<string, string> = {
   bat: "Batch", ps1: "PowerShell", vue: "Vue", svelte: "Svelte",
 };
 
+const IGNORE_DIRS = new Set([
+  "node_modules", ".git", ".svn", "dist", "build", "out", ".next",
+  "__pycache__", ".venv", "venv", "env", ".idea", ".vscode",
+  "bin", "obj", "target", ".gradle", "vendor", ".cache",
+  "coverage", ".nyc_output", ".turbo", "__MACOSX",
+]);
+
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
   return LANGUAGE_MAP[ext] || "Unknown";
+};
+
+const shouldIgnorePath = (path: string): boolean => {
+  const parts = path.split("/");
+  return parts.some((p) => IGNORE_DIRS.has(p) || p.startsWith("."));
+};
+
+const isCodeFile = (filename: string): boolean => {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  const name = filename.split("/").pop()?.toLowerCase() || "";
+  if (["dockerfile", "makefile", "gemfile", "rakefile"].includes(name)) return true;
+  return Object.keys(LANGUAGE_MAP).includes(ext);
 };
 
 const PASTE_LANGUAGES = [
@@ -52,6 +73,14 @@ const Upload = () => {
   const [mode, setMode] = useState<"explain" | "debug" | "learn">("explain");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+
+  // GitHub import state
+  const [githubUrl, setGithubUrl] = useState("");
+  const [githubLoading, setGithubLoading] = useState(false);
+
+  // ZIP upload state
+  const [zipLoading, setZipLoading] = useState(false);
 
   const processFileEntry = async (entry: FileSystemEntry): Promise<UploadedFile[]> => {
     if (entry.isFile) {
@@ -114,6 +143,98 @@ const Upload = () => {
     toast({ title: `${Math.min(allFiles.length, MAX_FILES)} files loaded` });
   }, [toast]);
 
+  // ZIP upload handler
+  const handleZipUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".zip")) {
+      toast({ title: "Invalid file", description: "Please upload a .zip file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max ZIP size is 50MB", variant: "destructive" });
+      return;
+    }
+
+    setZipLoading(true);
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const allFiles: UploadedFile[] = [];
+
+      const entries = Object.entries(zip.files);
+      for (const [path, zipEntry] of entries) {
+        if (zipEntry.dir) continue;
+        if (shouldIgnorePath(path)) continue;
+        if (!isCodeFile(path)) continue;
+        if (allFiles.length >= MAX_FILES) break;
+
+        try {
+          const content = await zipEntry.async("string");
+          if (content.length > MAX_FILE_SIZE) continue;
+          // Skip binary content
+          if (content.includes("\0")) continue;
+
+          const language = detectLanguage(path);
+          allFiles.push({ path: `/${path}`, content, language });
+        } catch {
+          // Skip files that can't be read as text
+        }
+      }
+
+      if (allFiles.length === 0) {
+        toast({ title: "No code files found", description: "The ZIP didn't contain recognizable code files.", variant: "destructive" });
+      } else {
+        setFiles(allFiles);
+        toast({ title: `${allFiles.length} files extracted from ZIP` });
+      }
+    } catch (err) {
+      toast({ title: "Failed to read ZIP", description: "The file may be corrupted or unsupported.", variant: "destructive" });
+    } finally {
+      setZipLoading(false);
+      if (zipInputRef.current) zipInputRef.current.value = "";
+    }
+  }, [toast]);
+
+  // GitHub import handler
+  const handleGithubImport = useCallback(async () => {
+    if (!githubUrl.trim()) return;
+
+    setGithubLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-import`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ repoUrl: githubUrl.trim() }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast({ title: "Import failed", description: data.error || "Could not fetch repository", variant: "destructive" });
+        return;
+      }
+
+      if (data.files && data.files.length > 0) {
+        setFiles(data.files);
+        toast({ title: `${data.fileCount} files imported from ${data.owner}/${data.repo}` });
+      } else {
+        toast({ title: "No code files found", description: "The repository didn't contain recognizable code files.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setGithubLoading(false);
+    }
+  }, [githubUrl, toast]);
+
   const handlePasteAdd = () => {
     if (!pasteCode.trim()) return;
     setFiles((prev) => [...prev, { path: `/pasted-code-${prev.length + 1}.txt`, content: pasteCode, language: pasteLang }]);
@@ -163,7 +284,7 @@ const Upload = () => {
         <div className="pt-28 pb-16 px-6 max-w-4xl mx-auto">
           <p className="eyebrow mb-4">Upload</p>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Add your code</h1>
-          <p className="text-muted-foreground mb-8">Drop a folder or paste snippets. Everything is read locally.</p>
+          <p className="text-muted-foreground mb-8">Drop a folder, upload a ZIP, import from GitHub, or paste snippets.</p>
 
           {/* Mode selector */}
           <div className="mb-8">
@@ -187,15 +308,22 @@ const Upload = () => {
 
           {/* Upload tabs */}
           <Tabs defaultValue="upload" className="mb-8">
-            <TabsList className="bg-card border border-border rounded-full p-1">
-              <TabsTrigger value="upload" className="rounded-full gap-2 data-[state=active]:bg-foreground data-[state=active]:text-background">
-                <FolderOpen className="h-3.5 w-3.5" /> Upload folder
+            <TabsList className="bg-card border border-border rounded-full p-1 flex-wrap h-auto gap-0.5">
+              <TabsTrigger value="upload" className="rounded-full gap-2 data-[state=active]:bg-foreground data-[state=active]:text-background text-xs sm:text-sm">
+                <FolderOpen className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Upload</span> Folder
               </TabsTrigger>
-              <TabsTrigger value="paste" className="rounded-full gap-2 data-[state=active]:bg-foreground data-[state=active]:text-background">
-                <ClipboardPaste className="h-3.5 w-3.5" /> Paste code
+              <TabsTrigger value="zip" className="rounded-full gap-2 data-[state=active]:bg-foreground data-[state=active]:text-background text-xs sm:text-sm">
+                <Archive className="h-3.5 w-3.5" /> ZIP
+              </TabsTrigger>
+              <TabsTrigger value="github" className="rounded-full gap-2 data-[state=active]:bg-foreground data-[state=active]:text-background text-xs sm:text-sm">
+                <Github className="h-3.5 w-3.5" /> GitHub
+              </TabsTrigger>
+              <TabsTrigger value="paste" className="rounded-full gap-2 data-[state=active]:bg-foreground data-[state=active]:text-background text-xs sm:text-sm">
+                <ClipboardPaste className="h-3.5 w-3.5" /> Paste
               </TabsTrigger>
             </TabsList>
 
+            {/* Folder upload */}
             <TabsContent value="upload">
               <div
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -211,6 +339,88 @@ const Upload = () => {
               </div>
             </TabsContent>
 
+            {/* ZIP upload */}
+            <TabsContent value="zip">
+              <div className="mt-6 glass-panel rounded-2xl p-12 text-center">
+                {zipLoading ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Extracting files…</p>
+                  </div>
+                ) : (
+                  <>
+                    <Archive className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-lg font-medium mb-1">Upload a ZIP file</p>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Max 50MB · Auto-filters node_modules, .git, build folders
+                    </p>
+                    <button
+                      onClick={() => zipInputRef.current?.click()}
+                      className="btn-primary"
+                    >
+                      Choose ZIP file
+                    </button>
+                    <input
+                      ref={zipInputRef}
+                      type="file"
+                      accept=".zip"
+                      className="hidden"
+                      onChange={handleZipUpload}
+                    />
+                  </>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* GitHub import */}
+            <TabsContent value="github">
+              <div className="mt-6 glass-panel rounded-2xl p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <Github className="h-6 w-6 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Import from GitHub</p>
+                    <p className="text-xs text-muted-foreground">Public repositories only · Paste the repo URL</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1 relative">
+                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      placeholder="https://github.com/user/repo"
+                      className="bg-card border-border rounded-lg pl-10"
+                      onKeyDown={(e) => { if (e.key === "Enter") handleGithubImport(); }}
+                    />
+                  </div>
+                  <button
+                    onClick={handleGithubImport}
+                    disabled={githubLoading || !githubUrl.trim()}
+                    className="btn-primary disabled:opacity-40 flex items-center gap-2"
+                  >
+                    {githubLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {githubLoading ? "Importing…" : "Import"}
+                  </button>
+                </div>
+                <div className="mt-4 space-y-1.5">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Try these</p>
+                  {[
+                    "https://github.com/expressjs/express",
+                    "https://github.com/sindresorhus/is",
+                  ].map((url) => (
+                    <button
+                      key={url}
+                      onClick={() => setGithubUrl(url)}
+                      className="block text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
+                    >
+                      {url}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Paste code */}
             <TabsContent value="paste">
               <div className="mt-6 space-y-4">
                 <div className="flex gap-3 items-end">
