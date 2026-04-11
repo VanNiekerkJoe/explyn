@@ -29,7 +29,7 @@ const Index = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
   const [introDone, setIntroDone] = useState(!shouldShowIntro());
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !shouldShowIntro() && shouldShowOnboarding());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
