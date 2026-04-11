@@ -7,114 +7,130 @@ const corsHeaders = {
 };
 
 const LEVEL_PROMPTS: Record<string, string> = {
-  beginner: `You are Explyn, an AI code tutor for absolute beginners. Explain everything using simple analogies, everyday language, and zero jargon. When you mention a technical term, immediately explain it in parentheses. Use "imagine..." and "think of it like..." frequently. Be encouraging and warm.`,
-  intermediate: `You are Explyn, an AI code analyst for developers with some experience. Be technical but accessible. Explain design patterns, best practices, and architectural decisions. Reference common conventions. Assume familiarity with basic programming concepts but explain framework-specific and advanced patterns.`,
-  advanced: `You are Explyn, an AI code analyst for senior developers. Go deep into internals, performance implications, memory management, edge cases, potential bugs, security concerns, and optimization opportunities. Discuss trade-offs, alternative approaches, and architectural critiques.`,
+  beginner: `You explain code for absolute beginners. Use simple analogies, everyday language, zero jargon. When you mention a technical term, immediately explain it. Use "imagine..." and "think of it like..." frequently. Be encouraging.`,
+  intermediate: `You explain code for developers with some experience. Be technical but accessible. Explain design patterns, best practices, and architectural decisions. Assume familiarity with basics.`,
+  advanced: `You explain code for senior developers. Go deep into internals, performance implications, memory management, edge cases, security concerns, and optimization opportunities. Discuss trade-offs.`,
+};
+
+const MODE_PROMPTS: Record<string, string> = {
+  explain: `You are Explyn, an AI code analyst. Generate a structured, thorough report covering:
+
+## Project Overview
+What this project does, tech stack detected, overall architecture.
+
+## Architecture & File Relationships
+How files relate. Show dependency graph as text diagram.
+
+For EACH file:
+## [filename]
+### Purpose
+### Imports (each import explained)
+### Data Structures (classes, interfaces, types, enums)
+### Functions & Methods (what each does, params, returns, side effects)
+### Views / UI Components (if applicable)
+### Design Patterns`,
+
+  debug: `You are Explyn in Debug Mode. Scan the code for bugs, errors, and issues. Generate:
+
+## Bug Summary
+Overview of all issues found, severity ratings (🔴 Critical, 🟡 Warning, 🟢 Info).
+
+## Detailed Bug Report
+For each bug found:
+### Bug #N — [Short title]
+- **File**: path
+- **Line(s)**: approximate location
+- **Severity**: Critical/Warning/Info
+- **What's wrong**: Clear explanation of the bug
+- **Why it happens**: Root cause analysis
+- **Fix**: Corrected code with explanation
+- **Prevention**: How to avoid this in future
+
+## Code Quality Issues
+Style, naming, complexity, missing error handling, etc.
+
+## Security Concerns
+Any security vulnerabilities detected.
+
+## Suggested Improvements
+Refactoring and optimization opportunities.`,
+
+  learn: `You are Explyn in Learning Mode. Convert the code into an interactive mini-lesson. Generate:
+
+## Lesson Overview
+What the student will learn from this code, prerequisites.
+
+## Concepts Covered
+List each programming concept used (e.g. loops, OOP, recursion, closures) with a badge.
+
+## Step-by-Step Walkthrough
+Walk through the code in logical order, explaining each concept as it appears. Use:
+- 🔑 Key Concept callouts
+- 💡 Real-world analogies
+- ⚡ "Did you know?" tips
+
+## Code Deep Dive
+The actual code with inline annotations explaining WHY each part exists.
+
+## Knowledge Check
+3-5 quiz questions about the code:
+- **Q1**: [Question]
+  - A) ...
+  - B) ...
+  - C) ...
+  - **Answer**: [Letter] — [Explanation]
+
+## Real-World Applications
+Where these concepts are used in industry.
+
+## Next Steps
+What to learn next based on these concepts.`,
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { files, level } = await req.json();
+    const { files, level, mode = "explain" } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     if (!files || !Array.isArray(files) || files.length === 0) {
       return new Response(JSON.stringify({ error: "No files provided" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const systemPrompt = LEVEL_PROMPTS[level] || LEVEL_PROMPTS.beginner;
+    const levelPrompt = LEVEL_PROMPTS[level] || LEVEL_PROMPTS.beginner;
+    const modePrompt = MODE_PROMPTS[mode] || MODE_PROMPTS.explain;
+    const systemPrompt = `${levelPrompt}\n\n${modePrompt}`;
 
     const fileContents = files
       .map((f: { path: string; language: string; content: string }) =>
-        `### File: ${f.path} (${f.language})\n\`\`\`${f.language.toLowerCase()}\n${f.content}\n\`\`\``
-      )
+        `### File: ${f.path} (${f.language})\n\`\`\`${f.language.toLowerCase()}\n${f.content}\n\`\`\``)
       .join("\n\n");
 
-    const userPrompt = `Analyze the following codebase thoroughly. Generate a structured report with these sections:
-
-## Project Overview
-What this project does, the tech stack detected, and overall architecture.
-
-## Architecture & File Relationships
-How the files relate to each other. Show the dependency graph as a text diagram.
-
-Then for EACH file, create a section:
-
-## [filename]
-### Purpose
-What this file does and its role in the project.
-
-### Imports
-Each import explained — what it provides and why it's needed.
-
-### Data Structures
-All classes, interfaces, types, structs, enums — their fields, purpose, and relationships.
-
-### Functions & Methods
-Each function/method — what it does, its parameters, return value, and any side effects.
-
-### Views / UI Components (if applicable)
-What the component renders, its props, state management, and user interactions.
-
-### Design Patterns
-Any patterns used (MVC, Observer, Factory, hooks, etc.)
-
----
-
-Here are the files:
-
-${fileContents}`;
+    const userPrompt = `Analyse the following codebase:\n\n${fileContents}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
         stream: true,
       }),
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please try again shortly." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI analysis failed" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "AI analysis failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    return new Response(response.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
   } catch (e) {
     console.error("analyze error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
