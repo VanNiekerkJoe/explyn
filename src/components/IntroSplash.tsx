@@ -147,7 +147,7 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
       >
         <svg
           viewBox="0 0 400 300"
-          className="w-[85vw] max-w-[500px] h-auto"
+          className="w-[95vw] max-w-[700px] h-auto"
           fill="none"
         >
           {/* Edges */}
@@ -211,7 +211,7 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
                 <circle
                   cx={0}
                   cy={0}
-                  r={node.id === "app" ? 5 : 3.5}
+                  r={node.id === "app" ? 7 : 5}
                   fill={
                     hasGlow
                       ? "hsl(var(--foreground))"
@@ -223,11 +223,11 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
                 {/* Node label */}
                 <text
                   x={0}
-                  y={node.id === "app" ? -12 : -9}
+                  y={node.id === "app" ? -15 : -11}
                   textAnchor="middle"
                   fill="hsl(var(--foreground))"
                   fillOpacity={0.7}
-                  fontSize={node.id === "app" ? 9 : 7}
+                  fontSize={node.id === "app" ? 11 : 9}
                   fontFamily="monospace"
                   className="transition-all duration-300"
                 >
@@ -241,7 +241,7 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
         {/* Intelligence labels */}
         {showLabels && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="relative w-[85vw] max-w-[500px]" style={{ aspectRatio: "400/300" }}>
+            <div className="relative w-[95vw] max-w-[700px]" style={{ aspectRatio: "400/300" }}>
               {Object.entries(glowLabels).map(([nodeId, label], i) => {
                 const pos = getNodePos(nodeId);
                 const xPct = (pos.x / 400) * 100;
@@ -249,7 +249,7 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
                 return (
                   <span
                     key={nodeId}
-                    className="absolute text-[10px] sm:text-xs tracking-widest uppercase text-muted-foreground intro-label-appear"
+                    className="absolute text-xs sm:text-sm tracking-widest uppercase text-muted-foreground intro-label-appear"
                     style={{
                       left: `${xPct}%`,
                       top: `${yPct}%`,
