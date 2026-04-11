@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useCredits } from "@/hooks/useCredits";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -30,6 +31,8 @@ const Report = () => {
   const filesRef = useRef<UploadedFile[]>([]);
   const levelRef = useRef<string>("beginner");
   const modeRef = useRef<string>("explain");
+  const { hasCredits, useCredit, remaining } = useCredits();
+  const [creditGated, setCreditGated] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("explyn_files");
