@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Code2, Bug, GraduationCap, Library, LogOut, User, Plus, Search, Trash2, FolderOpen } from "lucide-react";
+import { Code2, Bug, GraduationCap, Library, LogOut, User, Plus, Search, Trash2, FolderOpen, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useCredits } from "@/hooks/useCredits";
 import type { Database } from "@/integrations/supabase/types";
 
 type Snippet = Database["public"]["Tables"]["snippets"]["Row"];
@@ -21,6 +22,7 @@ const Dashboard = () => {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"snippets" | "collections">("snippets");
   const [loading, setLoading] = useState(true);
+  const { credits, remaining, planLimit } = useCredits();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
@@ -100,6 +102,30 @@ const Dashboard = () => {
         </nav>
 
         <div className="pt-28 pb-16 px-6 max-w-6xl mx-auto">
+          {/* Credits bar */}
+          {credits && (
+            <div className="glass-panel rounded-2xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
+                  <Zap className="h-4 w-4 text-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{remaining} credits remaining</p>
+                  <p className="text-xs text-muted-foreground capitalize">{credits.plan} plan · {planLimit} credits/month</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex-1 sm:w-40 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-foreground rounded-full transition-all"
+                    style={{ width: `${Math.min((remaining / planLimit) * 100, 100)}%` }}
+                  />
+                </div>
+                <button onClick={() => navigate("/pricing")} className="btn-ghost text-xs px-3 py-1.5">Upgrade</button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-8">
             <div>
               <p className="eyebrow mb-2">Dashboard</p>
