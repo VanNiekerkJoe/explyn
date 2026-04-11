@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload as UploadIcon, FileCode, FolderOpen, ClipboardPaste, Trash2, ArrowLeft, ArrowRight } from "lucide-react";
+import { Upload as UploadIcon, FileCode, FolderOpen, ClipboardPaste, Trash2, ArrowLeft, ArrowRight, Code2, Bug, GraduationCap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,6 +36,12 @@ const PASTE_LANGUAGES = [
   "Swift", "Kotlin", "Ruby", "PHP", "HTML", "CSS", "SQL", "Shell", "Other",
 ];
 
+const modes = [
+  { id: "explain" as const, icon: Code2, title: "Explain", desc: "Deep-dive explanation of every line, class, and import" },
+  { id: "debug" as const, icon: Bug, title: "Debug", desc: "Find bugs, explain why they occur, suggest fixes" },
+  { id: "learn" as const, icon: GraduationCap, title: "Learn", desc: "Mini-lesson with concepts, analogies, and quizzes" },
+];
+
 const Upload = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -43,6 +49,7 @@ const Upload = () => {
   const [pasteCode, setPasteCode] = useState("");
   const [pasteLang, setPasteLang] = useState("JavaScript");
   const [level, setLevel] = useState<"beginner" | "intermediate" | "advanced">("beginner");
+  const [mode, setMode] = useState<"explain" | "debug" | "learn">("explain");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,7 +91,7 @@ const Upload = () => {
       }
     }
     if (allFiles.length > MAX_FILES) {
-      toast({ title: "Too many files", description: `Limited to ${MAX_FILES}. First ${MAX_FILES} added.`, variant: "destructive" });
+      toast({ title: "Too many files", description: `Limited to ${MAX_FILES}.`, variant: "destructive" });
       setFiles(allFiles.slice(0, MAX_FILES));
     } else {
       setFiles(allFiles);
@@ -118,11 +125,12 @@ const Upload = () => {
 
   const handleAnalyze = () => {
     if (files.length === 0) {
-      toast({ title: "No files to analyse", description: "Upload files or paste code first.", variant: "destructive" });
+      toast({ title: "No files to analyse", variant: "destructive" });
       return;
     }
     sessionStorage.setItem("explyn_files", JSON.stringify(files));
     sessionStorage.setItem("explyn_level", level);
+    sessionStorage.setItem("explyn_mode", mode);
     navigate("/report");
   };
 
@@ -132,9 +140,9 @@ const Upload = () => {
   }, {});
 
   const levelDescriptions = {
-    beginner: "Simple analogies, no jargon, plain English",
-    intermediate: "Technical but accessible, patterns & best practices",
-    advanced: "Deep internals, performance, edge cases",
+    beginner: "Simple analogies, plain English",
+    intermediate: "Patterns & best practices",
+    advanced: "Deep internals, edge cases",
   };
 
   return (
@@ -143,7 +151,6 @@ const Upload = () => {
       <div className="bg-orb orb-2" aria-hidden="true" />
 
       <div className="relative z-10">
-        {/* Nav */}
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
             <button onClick={() => navigate("/")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
@@ -156,10 +163,30 @@ const Upload = () => {
         <div className="pt-28 pb-16 px-6 max-w-4xl mx-auto">
           <p className="eyebrow mb-4">Upload</p>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Add your code</h1>
-          <p className="text-muted-foreground mb-10">Drop a folder or paste snippets. Everything is read locally.</p>
+          <p className="text-muted-foreground mb-8">Drop a folder or paste snippets. Everything is read locally.</p>
 
-          {/* Tabs */}
-          <Tabs defaultValue="upload" className="mb-10">
+          {/* Mode selector */}
+          <div className="mb-8">
+            <p className="eyebrow mb-3">Analysis mode</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {modes.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setMode(m.id)}
+                  className={`step-card text-left transition-all ${
+                    mode === m.id ? "border-foreground/40 bg-foreground/5" : "hover:border-foreground/20"
+                  }`}
+                >
+                  <m.icon className={`h-5 w-5 mb-2 ${mode === m.id ? "text-foreground" : "text-muted-foreground"}`} />
+                  <p className="text-sm font-semibold mb-0.5">{m.title}</p>
+                  <p className="text-xs text-muted-foreground">{m.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Upload tabs */}
+          <Tabs defaultValue="upload" className="mb-8">
             <TabsList className="bg-card border border-border rounded-full p-1">
               <TabsTrigger value="upload" className="rounded-full gap-2 data-[state=active]:bg-foreground data-[state=active]:text-background">
                 <FolderOpen className="h-3.5 w-3.5" /> Upload folder
@@ -175,13 +202,11 @@ const Upload = () => {
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`mt-6 glass-panel rounded-2xl p-16 text-center cursor-pointer transition-all ${
-                  isDragging ? "border-foreground/30 bg-foreground/5" : "hover:border-foreground/20"
-                }`}
+                className={`mt-6 glass-panel rounded-2xl p-16 text-center cursor-pointer transition-all ${isDragging ? "border-foreground/30 bg-foreground/5" : "hover:border-foreground/20"}`}
               >
                 <UploadIcon className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-lg font-medium mb-1">Drop your project folder here</p>
-                <p className="text-sm text-muted-foreground">or click to browse · max {MAX_FILES} files, {MAX_FILE_SIZE / 1024}KB each</p>
+                <p className="text-sm text-muted-foreground">or click to browse · max {MAX_FILES} files</p>
                 <input ref={fileInputRef} type="file" className="hidden" {...({ webkitdirectory: "", directory: "" } as any)} multiple onChange={handleFileInput} />
               </div>
             </TabsContent>
@@ -193,9 +218,7 @@ const Upload = () => {
                     <label className="text-xs text-muted-foreground mb-1.5 block uppercase tracking-wider">Language</label>
                     <Select value={pasteLang} onValueChange={setPasteLang}>
                       <SelectTrigger className="bg-card border-border rounded-lg"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {PASTE_LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                      </SelectContent>
+                      <SelectContent>{PASTE_LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <button onClick={handlePasteAdd} disabled={!pasteCode.trim()} className="btn-primary disabled:opacity-40">Add snippet</button>
@@ -212,7 +235,7 @@ const Upload = () => {
 
           {/* File list */}
           {files.length > 0 && (
-            <div className="mb-10">
+            <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">{files.length} files loaded</h2>
                 <div className="flex gap-2 flex-wrap">
@@ -239,31 +262,24 @@ const Upload = () => {
           )}
 
           {/* Level selector */}
-          <div className="mb-10">
-            <p className="eyebrow mb-4">Explanation level</p>
+          <div className="mb-8">
+            <p className="eyebrow mb-3">Explanation level</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {(["beginner", "intermediate", "advanced"] as const).map((l) => (
                 <button
                   key={l}
                   onClick={() => setLevel(l)}
-                  className={`step-card text-left transition-all ${
-                    level === l ? "border-foreground/40 bg-foreground/5" : "hover:border-foreground/20"
-                  }`}
+                  className={`step-card text-left transition-all ${level === l ? "border-foreground/40 bg-foreground/5" : "hover:border-foreground/20"}`}
                 >
-                  <p className="text-sm font-semibold capitalize mb-1">{l}</p>
+                  <p className="text-sm font-semibold capitalize mb-0.5">{l}</p>
                   <p className="text-xs text-muted-foreground">{levelDescriptions[l]}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Analyse button */}
-          <button
-            onClick={handleAnalyze}
-            disabled={files.length === 0}
-            className="btn-primary w-full py-4 text-base disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            Analyse {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-5 w-5" />
+          <button onClick={handleAnalyze} disabled={files.length === 0} className="btn-primary w-full py-4 text-base disabled:opacity-30 disabled:cursor-not-allowed">
+            {mode === "debug" ? "Debug" : mode === "learn" ? "Create lesson from" : "Analyse"} {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-5 w-5" />
           </button>
         </div>
       </div>

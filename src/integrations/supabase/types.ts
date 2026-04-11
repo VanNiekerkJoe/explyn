@@ -14,7 +14,135 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      collection_snippets: {
+        Row: {
+          added_at: string
+          collection_id: string
+          id: string
+          snippet_id: string
+        }
+        Insert: {
+          added_at?: string
+          collection_id: string
+          id?: string
+          snippet_id: string
+        }
+        Update: {
+          added_at?: string
+          collection_id?: string
+          id?: string
+          snippet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_snippets_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_snippets_snippet_id_fkey"
+            columns: ["snippet_id"]
+            isOneToOne: false
+            referencedRelation: "snippets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collections: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          skill_level: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          skill_level?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          skill_level?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      snippets: {
+        Row: {
+          code: string
+          created_at: string
+          explanation: string | null
+          id: string
+          language: string
+          level: string
+          mode: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          language?: string
+          level?: string
+          mode?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          language?: string
+          level?: string
+          mode?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
