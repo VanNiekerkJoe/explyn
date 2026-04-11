@@ -32,11 +32,12 @@ const Report = () => {
   const filesRef = useRef<UploadedFile[]>([]);
   const levelRef = useRef<string>("beginner");
   const modeRef = useRef<string>("explain");
-  const { hasCredits, useCredit, remaining } = useCredits();
+  const { hasCredits, useCredit, remaining, loading: creditsLoading } = useCredits();
   const [creditGated, setCreditGated] = useState(false);
   const [showCode, setShowCode] = useState(false);
 
   useEffect(() => {
+    if (creditsLoading) return;
     const raw = sessionStorage.getItem("explyn_files");
     const level = sessionStorage.getItem("explyn_level") || "beginner";
     const mode = sessionStorage.getItem("explyn_mode") || "explain";
@@ -46,7 +47,7 @@ const Report = () => {
     levelRef.current = level;
     modeRef.current = mode;
     analyzeCode(files, level, mode);
-  }, []);
+  }, [creditsLoading]);
 
   const streamSSE = async (url: string, body: any, onDelta: (text: string) => void) => {
     const response = await fetch(url, {
