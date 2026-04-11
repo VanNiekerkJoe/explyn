@@ -1,27 +1,26 @@
 
 
-## Add Intro & Tutorial Display Constraints
+## Fix: Credit Gate Shows Before Credits Load
 
-### Changes
+### Problem
 
-**`src/components/IntroSplash.tsx`** — Update `shouldShowIntro()`:
-- Track intro shows using localStorage key `explyn_intro_shows` storing an array of timestamps (or today's date + count)
-- Logic: get today's date string, count how many times the intro was shown today. If < 4, allow it. Otherwise, skip.
-- When the intro runs, increment the counter in `localStorage`
+Race condition in `Report.tsx`: the `analyzeCode` function runs on mount via `useEffect`, but `useCredits()` hasn't finished fetching yet. Since `credits` is `null` initially, `hasCredits` defaults to `false`, so every authenticated user immediately hits the "Out of credits" gate.
 
-**`src/components/onboarding/OnboardingTutorial.tsx`** — Update `shouldShowOnboarding()`:
-- Current logic already checks `localStorage.getItem(ONBOARDING_KEY)` — this is correct
-- No change needed here; it already only shows once
+### Solution
 
-**`src/pages/Index.tsx`** — Add auth-based tutorial suppression:
-- After auth state is resolved, if the user is logged in, skip onboarding (`shouldShowOnboarding` should also return `false` if user is logged in)
-- When user logs in for the first time, mark onboarding as done: set `explyn_onboarding_done` in localStorage
-- Adjust: pass `loggedIn` into the onboarding gate so that once authenticated, tutorial never appears again
+**`src/pages/Report.tsx`** — Wait for credits to finish loading before running the analysis:
+- Destructure `loading` from `useCredits()` (rename to `creditsLoading` to avoid conflict with the existing `loading` state)
+- Add `creditsLoading` as a dependency check: don't call `analyzeCode` until credits are loaded
+- Change the `useEffect` to depend on `creditsLoading` and only trigger analysis once it becomes `false`
+
+Specifically:
+1. Change `const { hasCredits, useCredit, remaining } = useCredits();` to include `loading: creditsLoading`
+2. Update the `useEffect` to wait: if `creditsLoading` is true, return early. Once false, proceed with the existing logic (read sessionStorage, call `analyzeCode`).
+3. Add `creditsLoading` to the dependency array of that `useEffect`.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/IntroSplash.tsx` | `shouldShowIntro()` checks daily count < 4, increments on show |
-| `src/pages/Index.tsx` | Skip onboarding when `loggedIn` is true, mark done on first login |
+| `src/pages/Report.tsx` | Wait for credit loading to complete before checking `hasCredits` and starting analysis |
 
