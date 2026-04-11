@@ -1,101 +1,30 @@
 
 
-## Explyn: Major Feature Upgrade Plan
+## Intro Splash Screen — Once Per Day
 
-This plan covers 6 major feature areas to transform Explyn from a functional tool into an interactive intelligence system.
+A full-screen cinematic intro overlay that plays once every 24 hours (tracked via `localStorage` timestamp). Clean, minimal, dark — matching Explyn's monochrome aesthetic.
 
----
+### The Experience
 
-### 1. Persistent Project Brain (Database + UI)
+1. **Phase 1 (0–1s)**: Black screen. A single thin horizontal line draws itself across the center.
+2. **Phase 2 (1–2s)**: The line splits open vertically, revealing the word **"explyn"** letter-by-letter with a subtle stagger.
+3. **Phase 3 (2–3s)**: A tagline fades in below: *"Understand any codebase, deeply."*
+4. **Phase 4 (3–3.5s)**: The entire intro fades out and scales up slightly, revealing the landing page underneath. The component unmounts.
 
-**Database changes:**
-- New `projects` table: `id, user_id, name, description, file_structure (jsonb), created_at, updated_at`
-- New `project_files` table: `id, project_id, path, content, language, explanation (cached), created_at`
-- New `project_chat_history` table: `id, project_id, user_id, role, content, created_at`
-- New `project_notes` table: `id, project_id, user_id, file_path, line_number, content, created_at`
-- RLS policies scoped to `auth.uid() = user_id` on all tables
+A small "Skip" text in the bottom-right corner lets impatient users dismiss immediately.
 
-**Frontend:**
-- New `/project/:id` page showing the saved project with file tree, cached explanations, chat history, and user notes
-- Update Upload flow to optionally save as a "Project" (persisted) vs one-off analysis
-- Dashboard gets a "Projects" tab alongside Snippets and Collections
+### Technical Approach
 
-**Edge function:**
-- Update `chat-code` to accept a `project_id` and load context from `project_files` instead of requiring client to send all code every time
+- **New component**: `src/components/IntroSplash.tsx` — self-contained, uses CSS keyframe animations (no extra dependencies)
+- **Once-per-day logic**: On mount, checks `localStorage` key `explyn_intro_last_shown`. If the stored timestamp is less than 24 hours ago, the component renders nothing. Otherwise it plays the animation and updates the timestamp.
+- **Integration**: Rendered at the top of `Index.tsx`, before the main content. Uses a state flag `introDone` — while the intro plays, the main page content is hidden (or rendered behind with `pointer-events: none`).
+- **CSS**: All animations defined inline or in `index.css` — line draw, letter stagger, fade-out with scale transform.
 
----
+### Files Changed
 
-### 2. "Ask Your Codebase" — Project-Aware Chat
-
-**Changes:**
-- On the Project page, the chat panel loads previous `project_chat_history` messages on mount
-- Each new message is saved to `project_chat_history`
-- Suggested prompts: "Where is authentication handled?", "Why is this function slow?", "Who calls this method?"
-- The `chat-code` edge function receives project file paths/content from the DB (server-side) for better context
-
----
-
-### 3. Enhanced Debug Mode (Premium Feature)
-
-**Changes:**
-- Update the `analyze-code` edge function's debug mode prompt to produce structured output with severity badges, corrected code blocks, and prevention tips (already partially done)
-- Add a "Debug" quick-action on the Upload page that defaults to debug mode
-- Gate debug mode behind authentication + credit check (1 credit per debug run)
-- On the Report page, render debug-specific UI: color-coded severity cards (red/yellow/green), collapsible fix sections with diff-style before/after code blocks
-
----
-
-### 4. System Map View (Dependency Graph)
-
-**Frontend:**
-- New `SystemMapView` component using a lightweight graph library (e.g., `reactflow`)
-- Parses the code structure tree from the AI report to extract nodes (files, classes, functions) and edges (imports, calls)
-- Renders an interactive node graph with zoom/pan
-- Clicking a node scrolls to or opens its explanation
-- Add a "Map" tab/button on the Report and Project pages
-
----
-
-### 5. Shareable Explanations (Viral Loop)
-
-**Database:**
-- Add `is_public` boolean and `share_slug` text columns to `snippets` table
-- New RLS policy: allow anonymous SELECT when `is_public = true`
-
-**Frontend:**
-- New `/share/:slug` public page that renders a read-only snippet view (no auth required)
-- "Share" button on Report and SnippetView pages that generates a unique slug and copies the public URL
-- Open Graph meta tags on the share page for link previews
-
----
-
-### 6. Performance Strategy
-
-**Chunking:** Split large files at 8K chars before sending to AI; process in parallel batches of 3-5 files max per request
-**Caching:** Store explanations in `project_files.explanation` so re-opening a file doesn't re-call AI
-**Lazy loading:** File tree only loads file content on click, not all at once
-**Credit efficiency:** Skip re-analysis if cached explanation exists; only charge credits for new analysis
-
----
-
-### Technical Summary
-
-| Area | Files touched |
-|------|--------------|
-| DB migration | 4 new tables, 2 column additions |
-| Edge functions | `chat-code` (project context), `analyze-code` (chunking) |
-| New pages | `/project/:id`, `/share/:slug` |
-| New components | `SystemMapView`, `ProjectFileTree`, `DebugCard`, `ShareButton` |
-| Updated pages | Upload, Dashboard, Report, SnippetView |
-| New dependency | `reactflow` for system map |
-
-### Implementation Order
-
-1. Database migration (all new tables + columns)
-2. Project Brain — save/load projects, file tree, cached explanations
-3. Project-aware chat with history persistence
-4. Debug mode UI enhancements
-5. System Map View with reactflow
-6. Shareable public links
-7. Performance optimizations (chunking, caching, lazy load)
+| File | Change |
+|------|--------|
+| `src/components/IntroSplash.tsx` | New component with all animation logic |
+| `src/pages/Index.tsx` | Import and render `IntroSplash`, gate main content visibility |
+| `src/index.css` | Add keyframes for line-draw, letter-stagger, and exit animations |
 
