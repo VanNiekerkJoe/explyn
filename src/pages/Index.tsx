@@ -1,167 +1,194 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Code2, BookOpen, Cpu, Layers, Zap, Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 
 const languages = [
   "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust",
-  "Swift", "Kotlin", "Ruby", "PHP", "Dart", "Scala", "R", "MATLAB",
-  "Perl", "Lua", "Haskell", "Elixir", "Clojure", "F#", "Objective-C", "Assembly",
+  "Swift", "Kotlin", "Ruby", "PHP", "Dart", "Scala", "R", "Haskell",
+  "Elixir", "Lua", "Perl", "Objective-C", "Assembly", "SQL", "Shell",
 ];
 
-const levels = [
-  {
-    title: "Beginner",
-    icon: BookOpen,
-    description: "Simple analogies, no jargon. Understand what your code does in plain English.",
-    color: "from-green-400 to-emerald-500",
-  },
-  {
-    title: "Intermediate",
-    icon: Layers,
-    description: "Technical but accessible. Covers patterns, best practices, and architecture.",
-    color: "from-blue-400 to-cyan-500",
-  },
-  {
-    title: "Advanced",
-    icon: Cpu,
-    description: "Deep internals, performance implications, edge cases, and optimization.",
-    color: "from-purple-400 to-pink-500",
-  },
+const steps = [
+  { num: "01", title: "Upload", desc: "Drop your project folder or paste code snippets. We read everything client-side — nothing leaves your browser until you hit analyse." },
+  { num: "02", title: "Choose depth", desc: "Pick beginner, intermediate or advanced. The same codebase gets a completely different explanation depending on your level." },
+  { num: "03", title: "Analyse", desc: "AI scans every file — imports, classes, data structures, views, patterns — and builds a structured, deep-dive report." },
+  { num: "04", title: "Ask follow-ups", desc: "Open the context-aware chat. The AI remembers your entire codebase and answers questions in real time." },
 ];
 
-const features = [
-  { icon: Code2, title: "Any Language", desc: "Supports every programming language and framework" },
-  { icon: Eye, title: "Deep Analysis", desc: "Imports, classes, data structures, views — everything explained" },
-  { icon: Zap, title: "AI Powered", desc: "Intelligent analysis that adapts to your knowledge level" },
+const stats = [
+  { label: "Languages", value: "30+" },
+  { label: "Analysis depth", value: "3 levels" },
+  { label: "Follow-up", value: "AI chat" },
 ];
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-xl font-bold text-gradient">Explyn</span>
-          <Button onClick={() => navigate("/upload")} size="sm">
-            Get Started <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        </div>
-      </nav>
+    <div className="relative min-h-screen bg-background overflow-hidden">
+      {/* Ambient elements */}
+      <div className="noise" aria-hidden="true" />
+      <div className="bg-orb orb-1" aria-hidden="true" />
+      <div className="bg-orb orb-2" aria-hidden="true" />
+      <div className="bg-orb orb-3" aria-hidden="true" />
 
-      {/* Hero */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center animate-fade-in-up">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-secondary/50 text-sm text-muted-foreground mb-8">
-            <Zap className="h-3.5 w-3.5 text-primary" />
-            AI-Powered Code Analysis
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Nav */}
+        <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
+          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-bold tracking-tight">explyn</span>
+              <span className="hidden sm:block text-xs uppercase tracking-[0.15em] text-muted-foreground">Code Explainer</span>
+            </div>
+            <button onClick={() => navigate("/upload")} className="btn-primary text-sm">
+              Get started <ArrowRight className="ml-2 h-4 w-4" />
+            </button>
           </div>
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-            Understand any
-            <br />
-            <span className="text-gradient">codebase, deeply.</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Upload your project files and get a comprehensive breakdown of every class,
-            function, import, and data structure — explained at your level.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="text-base px-8 animate-pulse-glow"
-              onClick={() => navigate("/upload")}
-            >
-              Upload Your Code <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-base px-8"
-              onClick={() => {
-                document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              Learn More
-            </Button>
-          </div>
-        </div>
-      </section>
+        </nav>
 
-      {/* Language Marquee */}
-      <section className="py-10 border-y border-border/50 overflow-hidden">
-        <div className="flex animate-marquee whitespace-nowrap">
-          {[...languages, ...languages].map((lang, i) => (
-            <span
-              key={i}
-              className="mx-4 px-4 py-1.5 rounded-full border border-border bg-secondary/30 text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
-            >
-              {lang}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-24">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-colors"
+        {/* Hero */}
+        <section className="pt-32 sm:pt-40 pb-20 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="animate-fade-in-up">
+              <p className="eyebrow mb-6">Explyn / Code Explainer</p>
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] max-w-4xl">
+                Understand any codebase,{" "}
+                <span className="text-muted-foreground">deeply.</span>
+              </h1>
+            </div>
+            <div className="animate-fade-in-up-delay-1">
+              <p className="text-base sm:text-lg text-muted-foreground max-w-xl mt-6 leading-relaxed">
+                Upload your project and get a comprehensive breakdown of every class, function,
+                import and data structure — explained at your level of expertise.
+              </p>
+            </div>
+            <div className="animate-fade-in-up-delay-2 flex flex-wrap gap-3 mt-10">
+              <button onClick={() => navigate("/upload")} className="btn-primary">
+                Upload your code <ArrowUpRight className="ml-2 h-4 w-4" />
+              </button>
+              <button
+                onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
+                className="btn-ghost"
               >
-                <f.icon className="h-8 w-8 text-primary mb-4" />
-                <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-                <p className="text-muted-foreground text-sm">{f.desc}</p>
-              </div>
-            ))}
-          </div>
+                How it works
+              </button>
+            </div>
 
-          {/* Explanation Levels */}
-          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">
-            Three Levels of <span className="text-gradient">Understanding</span>
-          </h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
-            Choose the depth that matches your experience
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {levels.map((level) => (
-              <div
-                key={level.title}
-                className="group p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all hover:-translate-y-1"
-              >
-                <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${level.color} mb-4`}>
-                  <level.icon className="h-6 w-6 text-white" />
+            {/* Stats row */}
+            <div className="animate-fade-in-up-delay-3 mt-16 flex flex-wrap gap-4">
+              {stats.map((s) => (
+                <div key={s.label} className="glass-panel rounded-xl px-6 py-4 min-w-[140px]">
+                  <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
+                  <p className="text-lg font-semibold">{s.value}</p>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{level.title}</h3>
-                <p className="text-muted-foreground text-sm">{level.description}</p>
-              </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Language marquee */}
+        <section className="py-8 border-y border-border/30 overflow-hidden">
+          <div className="flex animate-marquee whitespace-nowrap">
+            {[...languages, ...languages].map((lang, i) => (
+              <span
+                key={i}
+                className="mx-3 px-4 py-1.5 rounded-full border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-default"
+              >
+                {lang}
+              </span>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto text-center p-12 rounded-3xl border border-border bg-card">
-          <h2 className="text-3xl font-bold mb-4">Ready to understand your code?</h2>
-          <p className="text-muted-foreground mb-8">
-            Upload any project and get a deep, structured explanation in seconds.
-          </p>
-          <Button size="lg" className="text-base px-8" onClick={() => navigate("/upload")}>
-            Start Analyzing <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-        </div>
-      </section>
+        {/* Glass panel feature */}
+        <section className="py-24 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="bento-grid">
+              {/* Large card */}
+              <div className="bento-span-2 glass-panel rounded-2xl p-8 sm:p-10">
+                <div className="flex gap-2 mb-6">
+                  <span className="signal-dot bg-red-400" />
+                  <span className="signal-dot bg-yellow-400" />
+                  <span className="signal-dot bg-green-400" />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-semibold mb-3">Deep code analysis</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed max-w-md mb-6">
+                  Every file scanned. Every import explained. Data structures, classes, methods,
+                  views, patterns — nothing is skipped.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {["Imports", "Classes", "Functions", "Data Structures", "Views", "Patterns", "Architecture"].map((chip) => (
+                    <span key={chip} className="px-3 py-1 rounded-full border border-border text-xs text-muted-foreground">
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-sm text-muted-foreground">
-          <span className="text-gradient font-semibold">Explyn</span>
-          <span>AI-powered code analysis</span>
-        </div>
-      </footer>
+              {/* Small card */}
+              <div className="glass-panel rounded-2xl p-8 flex flex-col justify-between">
+                <div>
+                  <p className="eyebrow mb-4">Levels</p>
+                  <h3 className="text-xl font-semibold mb-3">3 explanation depths</h3>
+                </div>
+                <div className="space-y-2 mt-4">
+                  {["Beginner", "Intermediate", "Advanced"].map((l) => (
+                    <div key={l} className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-background/50">
+                      <div className="w-1.5 h-1.5 rounded-full bg-foreground/60" />
+                      <span className="text-sm">{l}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Pipeline */}
+        <section id="how-it-works" className="py-24 px-6">
+          <div className="max-w-6xl mx-auto">
+            <p className="eyebrow mb-4">Pipeline</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-12">
+              A simple flow to{" "}
+              <span className="text-muted-foreground">deep understanding</span>
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {steps.map((step) => (
+                <div key={step.num} className="step-card hover-lift">
+                  <p className="text-sm text-muted-foreground font-mono mb-2">{step.num} —</p>
+                  <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="py-24 px-6">
+          <div className="max-w-3xl mx-auto text-center">
+            <p className="eyebrow mb-4">Ready?</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+              Upload your code and start learning
+            </h2>
+            <p className="text-muted-foreground mb-10 max-w-md mx-auto">
+              Any language. Any framework. Three levels of depth. Follow-up AI chat included.
+            </p>
+            <button onClick={() => navigate("/upload")} className="btn-primary text-base px-10 py-4">
+              Get started <ArrowRight className="ml-2 h-5 w-5" />
+            </button>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-border/30 py-10 px-6">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground tracking-tight">explyn</span>
+            <span>AI-powered code analysis</span>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 };
