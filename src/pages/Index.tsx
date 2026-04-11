@@ -75,19 +75,17 @@ const Index = () => {
 
       <div className="relative z-10">
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-lg font-bold tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => navigate("/pricing")} className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pricing</button>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <span className="text-base font-bold tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate("/pricing")} className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pricing</button>
               {loggedIn ? (
-                <button onClick={() => navigate("/dashboard")} className="btn-ghost text-sm">Dashboard</button>
+                <button onClick={() => navigate("/dashboard")} className="px-3 py-1.5 rounded-full border border-border text-xs font-medium text-foreground hover:bg-foreground hover:text-background transition-all">Dashboard</button>
               ) : (
-                <button onClick={() => navigate("/auth")} className="btn-ghost text-sm">Sign in</button>
+                <button onClick={() => navigate("/auth")} className="px-3 py-1.5 rounded-full border border-border text-xs font-medium text-foreground hover:bg-foreground hover:text-background transition-all">Sign in</button>
               )}
-              <button onClick={() => navigate("/upload")} className="btn-primary text-sm">
-                Get started <ArrowRight className="ml-2 h-4 w-4" />
+              <button onClick={() => navigate("/upload")} className="px-4 py-1.5 rounded-full bg-foreground text-background text-xs font-medium transition-all hover:bg-foreground/90 flex items-center gap-1.5">
+                Get started <ArrowRight className="h-3 w-3" />
               </button>
             </div>
           </div>

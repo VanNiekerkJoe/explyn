@@ -233,7 +233,7 @@ const Report = () => {
           <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <button onClick={() => navigate("/upload")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" />
-              <span className="font-bold text-foreground tracking-tight">explyn</span>
+              <span className="font-bold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
             </button>
             <div className="flex items-center gap-2">
               <button onClick={() => setShowCode(!showCode)} className={`btn-ghost text-sm gap-2 ${showCode ? "text-foreground" : ""}`}>

@@ -67,7 +67,7 @@ const ShareView = () => {
       <div className="relative z-10">
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-            <span className="font-bold tracking-tight">explyn</span>
+            <span className="font-bold tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
             <button onClick={() => navigate("/upload")} className="btn-primary text-sm">
               Try Explyn <ArrowRight className="ml-2 h-4 w-4" />
             </button>

@@ -96,7 +96,7 @@ const Pricing = () => {
           <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <button onClick={() => navigate("/")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" />
-              <span className="font-bold text-foreground tracking-tight">explyn</span>
+              <span className="font-bold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
             </button>
           </div>
         </nav>
@@ -176,7 +176,7 @@ const Pricing = () => {
 
         <footer className="border-t border-border/30 py-10 px-6">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground tracking-tight">explyn</span>
+            <span className="font-semibold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
             <span>AI-powered code analysis</span>
           </div>
         </footer>
