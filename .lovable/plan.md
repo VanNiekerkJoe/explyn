@@ -1,30 +1,36 @@
 
 
-## Intro Splash Screen — Once Per Day
+## Make Intro Cleaner and Bigger
 
-A full-screen cinematic intro overlay that plays once every 24 hours (tracked via `localStorage` timestamp). Clean, minimal, dark — matching Explyn's monochrome aesthetic.
+Simplify the intro to fewer visual elements with larger, bolder typography and smoother transitions. Remove visual clutter (grid background, neural dots, glass panel) and lean into a minimal, cinematic feel.
 
-### The Experience
+### Changes
 
-1. **Phase 1 (0–1s)**: Black screen. A single thin horizontal line draws itself across the center.
-2. **Phase 2 (1–2s)**: The line splits open vertically, revealing the word **"explyn"** letter-by-letter with a subtle stagger.
-3. **Phase 3 (2–3s)**: A tagline fades in below: *"Understand any codebase, deeply."*
-4. **Phase 4 (3–3.5s)**: The entire intro fades out and scales up slightly, revealing the landing page underneath. The component unmounts.
+**`src/components/IntroSplash.tsx`** — Rewrite the render output:
 
-A small "Skip" text in the bottom-right corner lets impatient users dismiss immediately.
+1. **Remove clutter**: Delete the grid background, glass-panel tree view, and neural dots row. These make it feel busy on mobile (393px viewport).
 
-### Technical Approach
+2. **Phase 1 — Terminal typing**: Increase font size from `text-sm` to `text-lg sm:text-2xl`. Keep cursor blink but make cursor taller (`h-6`).
 
-- **New component**: `src/components/IntroSplash.tsx` — self-contained, uses CSS keyframe animations (no extra dependencies)
-- **Once-per-day logic**: On mount, checks `localStorage` key `explyn_intro_last_shown`. If the stored timestamp is less than 24 hours ago, the component renders nothing. Otherwise it plays the animation and updates the timestamp.
-- **Integration**: Rendered at the top of `Index.tsx`, before the main content. Uses a state flag `introDone` — while the intro plays, the main page content is hidden (or rendered behind with `pointer-events: none`).
-- **CSS**: All animations defined inline or in `index.css` — line draw, letter stagger, fade-out with scale transform.
+3. **Phase 2 — Logo reveal** (replaces the tree phase): Instead of showing a code tree, transition directly to the **"explyn"** wordmark at `text-5xl sm:text-7xl` with letter-spacing and a smooth scale-in from 90% to 100%. Clean, bold, centered.
+
+4. **Phase 3 — Tagline**: Single phrase below the logo: *"Understand any codebase, deeply."* at `text-base sm:text-xl`, fading in with a slight upward slide. No cycling through multiple phrases.
+
+5. **Exit**: The logo and tagline scale up slightly (`scale-110`) and fade out together into the app.
+
+6. **Glow orb**: Keep but make it larger (`w-96 h-96`) and more diffuse (`blur(80px)`) for a subtle ambient effect behind the logo.
+
+7. **Skip button**: Keep as-is, it's already minimal.
+
+8. **Timing**: Tighten to ~4s total:
+   - 0–1.2s: typing
+   - 1.2–2.5s: logo reveal
+   - 2.5–3.5s: tagline fade-in
+   - 3.5–4.2s: exit
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/IntroSplash.tsx` | New component with all animation logic |
-| `src/pages/Index.tsx` | Import and render `IntroSplash`, gate main content visibility |
-| `src/index.css` | Add keyframes for line-draw, letter-stagger, and exit animations |
+| `src/components/IntroSplash.tsx` | Simplified phases, larger typography, removed tree/dots/grid |
 
