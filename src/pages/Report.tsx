@@ -253,6 +253,17 @@ const Report = () => {
               <span className="px-2 py-0.5 rounded-full border border-border text-[10px] text-muted-foreground capitalize">{levelRef.current}</span>
             </div>
 
+            {creditGated && (
+              <div className="glass-panel rounded-2xl p-8 text-center mb-8">
+                <Zap className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-semibold text-lg mb-2">Out of credits</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  You've used all your credits this month. Upgrade your plan or wait for the reset.
+                </p>
+                <button onClick={() => navigate("/pricing")} className="btn-primary">View plans</button>
+              </div>
+            )}
+
             {loading && (
               <div className="glass-panel rounded-2xl p-6 mb-8">
                 <div className="flex items-center gap-3 mb-3">
