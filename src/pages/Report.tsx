@@ -90,6 +90,25 @@ const Report = () => {
   const analyzeCode = async (files: UploadedFile[], level: string, mode: string) => {
     setLoading(true);
     setProgress(10);
+
+    // Check credits (allow unauthenticated users a free pass for now)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && !hasCredits) {
+      setCreditGated(true);
+      setLoading(false);
+      return;
+    }
+
+    // Deduct credit for authenticated users
+    if (session) {
+      const success = await useCredit(1, `${mode} analysis`);
+      if (!success) {
+        setCreditGated(true);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const filesSummary = files.map((f) => ({
         path: f.path, language: f.language, content: f.content.slice(0, 8000),
