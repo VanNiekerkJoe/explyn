@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { supabase } from "@/integrations/supabase/client";
 import type { UploadedFile } from "./Upload";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
+
+const MODE_LABELS = { explain: "Analysis Report", debug: "Debug Report", learn: "Learning Lesson" };
 
 const Report = () => {
   const navigate = useNavigate();
@@ -22,25 +25,25 @@ const Report = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const filesRef = useRef<UploadedFile[]>([]);
   const levelRef = useRef<string>("beginner");
+  const modeRef = useRef<string>("explain");
 
   useEffect(() => {
     const raw = sessionStorage.getItem("explyn_files");
     const level = sessionStorage.getItem("explyn_level") || "beginner";
+    const mode = sessionStorage.getItem("explyn_mode") || "explain";
     if (!raw) { navigate("/upload"); return; }
     const files: UploadedFile[] = JSON.parse(raw);
     filesRef.current = files;
     levelRef.current = level;
-    analyzeCode(files, level);
+    modeRef.current = mode;
+    analyzeCode(files, level, mode);
   }, []);
 
-  const streamSSE = async (
-    url: string,
-    body: any,
-    onDelta: (text: string) => void,
-  ) => {
+  const streamSSE = async (url: string, body: any, onDelta: (text: string) => void) => {
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -49,22 +52,18 @@ const Report = () => {
       },
       body: JSON.stringify(body),
     });
-
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.error || `Request failed (${response.status})`);
     }
     if (!response.body) throw new Error("No response body");
-
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-
       let ni: number;
       while ((ni = buffer.indexOf("\n")) !== -1) {
         let line = buffer.slice(0, ni);
@@ -85,7 +84,7 @@ const Report = () => {
     }
   };
 
-  const analyzeCode = async (files: UploadedFile[], level: string) => {
+  const analyzeCode = async (files: UploadedFile[], level: string, mode: string) => {
     setLoading(true);
     setProgress(10);
     try {
@@ -93,11 +92,10 @@ const Report = () => {
         path: f.path, language: f.language, content: f.content.slice(0, 8000),
       }));
       setProgress(30);
-
       let fullReport = "";
       await streamSSE(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-code`,
-        { files: filesSummary, level },
+        { files: filesSummary, level, mode },
         (chunk) => {
           fullReport += chunk;
           setReport(fullReport);
@@ -112,16 +110,41 @@ const Report = () => {
     }
   };
 
+  const saveSnippet = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({ title: "Sign in to save", description: "Create an account to save snippets to your library." });
+      navigate("/auth");
+      return;
+    }
+    setSaving(true);
+    const firstFile = filesRef.current[0];
+    const title = firstFile?.path?.split("/").pop() || "Untitled snippet";
+    const { error } = await supabase.from("snippets").insert({
+      user_id: session.user.id,
+      title,
+      code: filesRef.current.map((f) => `// ${f.path}\n${f.content}`).join("\n\n"),
+      language: firstFile?.language || "Unknown",
+      explanation: report,
+      level: levelRef.current,
+      mode: modeRef.current,
+    });
+    if (error) {
+      toast({ title: "Error saving", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Saved to library!" });
+    }
+    setSaving(false);
+  };
+
   const sendChatMessage = async () => {
     if (!chatInput.trim() || chatLoading) return;
     const userMsg: ChatMessage = { role: "user", content: chatInput };
     setChatMessages((prev) => [...prev, userMsg]);
     setChatInput("");
     setChatLoading(true);
-
     const allMessages = [...chatMessages, userMsg];
     let assistantContent = "";
-
     try {
       await streamSSE(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-code`,
@@ -174,34 +197,47 @@ const Report = () => {
     },
   };
 
+  const currentMode = modeRef.current as keyof typeof MODE_LABELS;
+
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       <div className="noise" aria-hidden="true" />
       <div className="bg-orb orb-1" aria-hidden="true" />
 
       <div className="relative z-10">
-        {/* Nav */}
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <button onClick={() => navigate("/upload")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" />
               <span className="font-bold text-foreground tracking-tight">explyn</span>
             </button>
-            <button onClick={() => setChatOpen(!chatOpen)} className="btn-ghost text-sm gap-2">
-              <MessageCircle className="h-4 w-4" /> Ask questions
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={saveSnippet} disabled={saving || loading} className="btn-ghost text-sm gap-2 disabled:opacity-40">
+                <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => setChatOpen(!chatOpen)} className="btn-ghost text-sm gap-2">
+                <MessageCircle className="h-4 w-4" /> Ask
+              </button>
+            </div>
           </div>
         </nav>
 
         <div className="pt-28 pb-16 px-6 max-w-6xl mx-auto flex gap-6">
-          {/* Report */}
           <div className={`flex-1 min-w-0 transition-all duration-300 ${chatOpen ? "max-w-[58%]" : ""}`}>
-            {/* Progress */}
+            {/* Mode badge */}
+            <div className="flex items-center gap-3 mb-6">
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <span className="eyebrow">{MODE_LABELS[currentMode] || "Report"}</span>
+              <span className="px-2 py-0.5 rounded-full border border-border text-[10px] text-muted-foreground capitalize">{levelRef.current}</span>
+            </div>
+
             {loading && (
               <div className="glass-panel rounded-2xl p-6 mb-8">
                 <div className="flex items-center gap-3 mb-3">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Analysing your code…</span>
+                  <span className="text-sm text-muted-foreground">
+                    {modeRef.current === "debug" ? "Scanning for bugs…" : modeRef.current === "learn" ? "Creating lesson…" : "Analysing your code…"}
+                  </span>
                 </div>
                 <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-foreground rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
@@ -209,7 +245,6 @@ const Report = () => {
               </div>
             )}
 
-            {/* Report sections */}
             {sections.length > 0 ? (
               <div className="space-y-3">
                 {sections.map((section, i) => {
@@ -217,13 +252,9 @@ const Report = () => {
                   const title = lines[0]?.replace(/^#{1,3}\s*/, "") || `Section ${i + 1}`;
                   const body = lines.slice(1).join("\n");
                   const isOpen = expandedSections.has(i);
-
                   return (
                     <div key={i} className="glass-panel rounded-xl overflow-hidden">
-                      <button
-                        onClick={() => toggleSection(i)}
-                        className="w-full flex items-center justify-between p-5 text-left hover:bg-foreground/[0.03] transition-colors"
-                      >
+                      <button onClick={() => toggleSection(i)} className="w-full flex items-center justify-between p-5 text-left hover:bg-foreground/[0.03] transition-colors">
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground font-mono">{String(i + 1).padStart(2, "0")}</span>
                           <span className="font-semibold">{title}</span>
@@ -231,7 +262,7 @@ const Report = () => {
                         {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       </button>
                       {isOpen && (
-                        <div className="px-5 pb-5 prose prose-sm prose-dark max-w-none">
+                        <div className="px-5 pb-5 prose prose-sm prose-invert max-w-none">
                           <ReactMarkdown components={mdComponents}>{body}</ReactMarkdown>
                         </div>
                       )}
@@ -263,17 +294,20 @@ const Report = () => {
                   {chatMessages.length === 0 && (
                     <div className="text-center py-8">
                       <p className="text-sm text-muted-foreground">Ask anything about your codebase</p>
+                      <div className="mt-4 space-y-2">
+                        {["Why is this code structured this way?", "Can this be optimised?", "What pattern is used here?"].map((q) => (
+                          <button key={q} onClick={() => { setChatInput(q); }} className="block w-full text-left text-xs text-muted-foreground px-3 py-2 rounded-lg border border-border hover:border-foreground/20 transition-colors">
+                            {q}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {chatMessages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                        msg.role === "user"
-                          ? "bg-foreground text-background"
-                          : "bg-card border border-border"
-                      }`}>
+                      <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === "user" ? "bg-foreground text-background" : "bg-card border border-border"}`}>
                         {msg.role === "assistant" ? (
-                          <div className="prose prose-sm prose-dark max-w-none">
+                          <div className="prose prose-sm prose-invert max-w-none">
                             <ReactMarkdown components={mdComponents}>{msg.content}</ReactMarkdown>
                           </div>
                         ) : msg.content}
@@ -296,12 +330,7 @@ const Report = () => {
               </ScrollArea>
               <div className="p-4 border-t border-border/50">
                 <form onSubmit={(e) => { e.preventDefault(); sendChatMessage(); }} className="flex gap-2">
-                  <Input
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask a question…"
-                    className="bg-card border-border rounded-full text-sm"
-                  />
+                  <Input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask a question…" className="bg-card border-border rounded-full text-sm" />
                   <button type="submit" disabled={chatLoading || !chatInput.trim()} className="btn-primary p-3 rounded-full disabled:opacity-30">
                     <Send className="h-4 w-4" />
                   </button>
