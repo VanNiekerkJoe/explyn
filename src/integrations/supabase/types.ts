@@ -131,15 +131,158 @@ export type Database = {
         }
         Relationships: []
       }
+      project_chat_history: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_chat_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_files: {
+        Row: {
+          content: string
+          created_at: string
+          explanation: string | null
+          id: string
+          language: string
+          path: string
+          project_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          language?: string
+          path: string
+          project_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          language?: string
+          path?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_notes: {
+        Row: {
+          content: string
+          created_at: string
+          file_path: string | null
+          id: string
+          line_number: number | null
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          line_number?: number | null
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          line_number?: number | null
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_structure: Json | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_structure?: Json | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_structure?: Json | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       snippets: {
         Row: {
           code: string
           created_at: string
           explanation: string | null
           id: string
+          is_public: boolean
           language: string
           level: string
           mode: string
+          share_slug: string | null
           title: string
           updated_at: string
           user_id: string
@@ -149,9 +292,11 @@ export type Database = {
           created_at?: string
           explanation?: string | null
           id?: string
+          is_public?: boolean
           language?: string
           level?: string
           mode?: string
+          share_slug?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -161,9 +306,11 @@ export type Database = {
           created_at?: string
           explanation?: string | null
           id?: string
+          is_public?: boolean
           language?: string
           level?: string
           mode?: string
+          share_slug?: string | null
           title?: string
           updated_at?: string
           user_id?: string
