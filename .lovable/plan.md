@@ -1,36 +1,61 @@
 
 
-## Make Intro Cleaner and Bigger
+## "Code Canvas Awakens" — Premium Intro Redesign
 
-Simplify the intro to fewer visual elements with larger, bolder typography and smoother transitions. Remove visual clutter (grid background, neural dots, glass panel) and lean into a minimal, cinematic feel.
+Complete rewrite of `IntroSplash.tsx` to create a calm, purposeful animation that visually demonstrates what Explyn does: raw code → structure → understanding.
 
-### Changes
+### The Experience (4.5s total)
 
-**`src/components/IntroSplash.tsx`** — Rewrite the render output:
+**Phase 0 (0–0.8s) — Quiet opening**
+Dark screen with a single soft pulse dot in the center, breathing slowly. No text. The app is "thinking."
 
-1. **Remove clutter**: Delete the grid background, glass-panel tree view, and neural dots row. These make it feel busy on mobile (393px viewport).
+**Phase 1 (0.8–2.2s) — Code tree assembles**
+The pulse dissolves. Thin lines draw outward from center. Nodes appear in layers:
+- First: file names (`App.tsx`, `auth/`, `api/`, `utils/`)
+- Then: deeper structure (`UserService`, `Router`, `Database`)
+- Connected by thin animated lines (SVG paths with `stroke-dashoffset` animation)
+- Each node fades in with a slight scale-up, staggered 120ms apart
 
-2. **Phase 1 — Terminal typing**: Increase font size from `text-sm` to `text-lg sm:text-2xl`. Keep cursor blink but make cursor taller (`h-6`).
+**Phase 2 (2.2–3.5s) — Intelligence moment**
+A few key nodes glow softly. Small labels appear beside them: "structure", "logic", "flow", "dependencies". The tree subtly reorganizes — nodes shift positions slightly to suggest the transformation from raw code to a knowledge map.
 
-3. **Phase 2 — Logo reveal** (replaces the tree phase): Instead of showing a code tree, transition directly to the **"explyn"** wordmark at `text-5xl sm:text-7xl` with letter-spacing and a smooth scale-in from 90% to 100%. Clean, bold, centered.
+**Phase 3 (3.5–4.5s) — Morph into app**
+The entire structure contracts toward center, nodes fade, the "explyn" wordmark appears where the center node was, tagline fades in below, then the whole thing scales up and fades out into the actual page.
 
-4. **Phase 3 — Tagline**: Single phrase below the logo: *"Understand any codebase, deeply."* at `text-base sm:text-xl`, fading in with a slight upward slide. No cycling through multiple phrases.
+### Technical Approach
 
-5. **Exit**: The logo and tagline scale up slightly (`scale-110`) and fade out together into the app.
+**`src/components/IntroSplash.tsx`** — Full rewrite:
+- Use inline SVG for the node-and-line graph (no external deps)
+- Define ~10 nodes with x,y positions, connected by ~8 edges
+- Animate with CSS transitions + `stroke-dasharray`/`stroke-dashoffset` for line drawing
+- Phase management via `useState` + `setTimeout` timeline (same pattern as current)
+- Labels ("structure", "logic", etc.) appear as absolutely-positioned spans near specific nodes
+- Exit animation: nodes scale to 0, wordmark scales in, then entire overlay fades
 
-6. **Glow orb**: Keep but make it larger (`w-96 h-96`) and more diffuse (`blur(80px)`) for a subtle ambient effect behind the logo.
+**`src/index.css`** — Add keyframes:
+- `@keyframes draw-line` for SVG stroke animation
+- `@keyframes node-appear` for node scale-in with glow
+- `@keyframes pulse-soft` for the opening dot
 
-7. **Skip button**: Keep as-is, it's already minimal.
+**`src/pages/Index.tsx`** — No changes needed (already wired up)
 
-8. **Timing**: Tighten to ~4s total:
-   - 0–1.2s: typing
-   - 1.2–2.5s: logo reveal
-   - 2.5–3.5s: tagline fade-in
-   - 3.5–4.2s: exit
+### Node graph data structure
+```text
+        auth/
+       /
+App.tsx --- api/ --- Database
+       \
+        utils/ --- Router
+                    |
+                UserService
+```
+
+Each node: `{ id, label, x, y, glowLabel? }`. Edges: `{ from, to }`. Positions calculated relative to a centered 400x300 viewBox, responsive via SVG scaling.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/IntroSplash.tsx` | Simplified phases, larger typography, removed tree/dots/grid |
+| `src/components/IntroSplash.tsx` | Full rewrite — SVG graph animation, 4 phases, node/edge system |
+| `src/index.css` | Add 3 keyframes for line-draw, node-appear, pulse |
 
