@@ -26,6 +26,8 @@ const stats = [
 const Index = () => {
   const navigate = useNavigate();
   const [loggedIn, setLoggedIn] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
+  const [introDone, setIntroDone] = useState(!shouldShowIntro());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
