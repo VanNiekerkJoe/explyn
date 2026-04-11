@@ -1,34 +1,27 @@
 
 
-## Fix Tutorial Alignment
-
-The tutorial speech bubbles don't align properly on the 393px mobile viewport. The issues:
-
-1. **SpeechBubble uses `absolute` positioning** inside the fixed overlay — this is fine structurally, but the underlying page scrolls and content can shift visually.
-2. **The overlay container doesn't prevent scroll** — the page behind scrolls freely, making the tutorial feel disconnected.
-3. **Step 4 (code demo) can overflow** on small screens — the speech bubble + code demo stacked vertically may exceed viewport height at 617px.
-4. **No `overflow-y-auto`** on the overlay — if content is taller than the screen, it clips.
+## Add Intro & Tutorial Display Constraints
 
 ### Changes
 
-**`src/components/onboarding/OnboardingTutorial.tsx`**:
-- Add `overflow-hidden` to the body when the tutorial is active (prevent background scroll)
-- Add `overflow-y-auto` to the fixed overlay container so tall steps can scroll
-- Change the overlay to use `flex items-center justify-center` for consistent centering instead of relying on SpeechBubble's absolute positioning
+**`src/components/IntroSplash.tsx`** — Update `shouldShowIntro()`:
+- Track intro shows using localStorage key `explyn_intro_shows` storing an array of timestamps (or today's date + count)
+- Logic: get today's date string, count how many times the intro was shown today. If < 4, allow it. Otherwise, skip.
+- When the intro runs, increment the counter in `localStorage`
 
-**`src/components/onboarding/SpeechBubble.tsx`**:
-- When `position="center"`, switch from `absolute top-1/2 left-1/2 -translate` to a simpler flex-child approach (no absolute positioning needed when parent is a flex centering container)
-- Increase `max-w-[340px]` to `max-w-[380px]` for slightly more room on mobile
-- Ensure the bubble doesn't overflow the viewport by adding `max-h-[85vh] overflow-y-auto` to the bubble body
+**`src/components/onboarding/OnboardingTutorial.tsx`** — Update `shouldShowOnboarding()`:
+- Current logic already checks `localStorage.getItem(ONBOARDING_KEY)` — this is correct
+- No change needed here; it already only shows once
 
-**`src/components/onboarding/OnboardingTutorial.tsx` — Step 4 (code demo)**:
-- Add `overflow-y-auto` and `max-h-screen` to the step 4 container
-- Reduce gap/padding so both the speech bubble and code demo fit within 617px
+**`src/pages/Index.tsx`** — Add auth-based tutorial suppression:
+- After auth state is resolved, if the user is logged in, skip onboarding (`shouldShowOnboarding` should also return `false` if user is logged in)
+- When user logs in for the first time, mark onboarding as done: set `explyn_onboarding_done` in localStorage
+- Adjust: pass `loggedIn` into the onboarding gate so that once authenticated, tutorial never appears again
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/onboarding/SpeechBubble.tsx` | Wider max-width, scroll support for tall content, better centering |
-| `src/components/onboarding/OnboardingTutorial.tsx` | Lock body scroll, flex-center layout, fix step 4 overflow |
+| `src/components/IntroSplash.tsx` | `shouldShowIntro()` checks daily count < 4, increments on show |
+| `src/pages/Index.tsx` | Skip onboarding when `loggedIn` is true, mark done on first login |
 
