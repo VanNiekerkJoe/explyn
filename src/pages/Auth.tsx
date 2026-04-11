@@ -58,7 +58,7 @@ const Auth = () => {
       <div className="relative z-10 w-full max-w-sm px-6">
         <button onClick={() => navigate("/")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8">
           <ArrowLeft className="h-4 w-4" />
-          <span className="font-bold text-foreground tracking-tight">explyn</span>
+          <span className="font-bold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
         </button>
 
         <h1 className="text-2xl font-bold mb-1">{isLogin ? "Welcome back" : "Create account"}</h1>
