@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import IntroSplash, { shouldShowIntro } from "@/components/IntroSplash";
+import OnboardingTutorial, { shouldShowOnboarding } from "@/components/onboarding/OnboardingTutorial";
 
 const languages = [
   "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust",
@@ -28,6 +29,7 @@ const Index = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
   const [introDone, setIntroDone] = useState(!shouldShowIntro());
+  const [showOnboarding, setShowOnboarding] = useState(() => !shouldShowIntro() && shouldShowOnboarding());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -42,7 +44,16 @@ const Index = () => {
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       {showIntro && !introDone && (
-        <IntroSplash onComplete={() => { setShowIntro(false); setIntroDone(true); }} />
+        <IntroSplash onComplete={() => {
+          setShowIntro(false);
+          setIntroDone(true);
+          if (shouldShowOnboarding()) {
+            setShowOnboarding(true);
+          }
+        }} />
+      )}
+      {showOnboarding && (
+        <OnboardingTutorial onComplete={() => setShowOnboarding(false)} />
       )}
       <div className="noise" aria-hidden="true" />
       <div className="bg-orb orb-1" aria-hidden="true" />
