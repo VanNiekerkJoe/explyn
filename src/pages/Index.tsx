@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import IntroSplash, { shouldShowIntro } from "@/components/IntroSplash";
 
 const languages = [
   "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust",
