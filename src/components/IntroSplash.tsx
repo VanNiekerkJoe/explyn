@@ -76,6 +76,7 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
   // Master timeline
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, new Date().toDateString());
+    recordIntroShow();
     const timers: ReturnType<typeof setTimeout>[] = [];
     const t = (fn: () => void, ms: number) => {
       timers.push(setTimeout(fn, ms));
@@ -308,8 +309,32 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
   );
 };
 
+const INTRO_SHOWS_KEY = "explyn_intro_shows";
+
 export function shouldShowIntro(): boolean {
-  return true;
+  try {
+    const today = new Date().toDateString();
+    const raw = localStorage.getItem(INTRO_SHOWS_KEY);
+    if (!raw) return true;
+    const data = JSON.parse(raw);
+    if (data.date !== today) return true;
+    return (data.count || 0) < 4;
+  } catch {
+    return true;
+  }
+}
+
+export function recordIntroShow(): void {
+  try {
+    const today = new Date().toDateString();
+    const raw = localStorage.getItem(INTRO_SHOWS_KEY);
+    let count = 1;
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.date === today) count = (data.count || 0) + 1;
+    }
+    localStorage.setItem(INTRO_SHOWS_KEY, JSON.stringify({ date: today, count }));
+  } catch {}
 }
 
 export default IntroSplash;

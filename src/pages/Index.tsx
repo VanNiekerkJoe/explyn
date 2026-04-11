@@ -29,14 +29,27 @@ const Index = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
   const [introDone, setIntroDone] = useState(!shouldShowIntro());
-  const [showOnboarding, setShowOnboarding] = useState(() => !shouldShowIntro() && shouldShowOnboarding());
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setLoggedIn(!!session);
+      const isLoggedIn = !!session;
+      setLoggedIn(isLoggedIn);
+      if (isLoggedIn) {
+        // Mark onboarding done forever once logged in
+        localStorage.setItem("explyn_onboarding_done", "true");
+        setShowOnboarding(false);
+      } else if (!shouldShowIntro() && shouldShowOnboarding()) {
+        setShowOnboarding(true);
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setLoggedIn(!!session);
+      const isLoggedIn = !!session;
+      setLoggedIn(isLoggedIn);
+      if (isLoggedIn) {
+        localStorage.setItem("explyn_onboarding_done", "true");
+        setShowOnboarding(false);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -47,7 +60,7 @@ const Index = () => {
         <IntroSplash onComplete={() => {
           setShowIntro(false);
           setIntroDone(true);
-          if (shouldShowOnboarding()) {
+          if (!loggedIn && shouldShowOnboarding()) {
             setShowOnboarding(true);
           }
         }} />
