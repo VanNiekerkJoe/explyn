@@ -41,6 +41,9 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
+      {showIntro && !introDone && (
+        <IntroSplash onComplete={() => { setShowIntro(false); setIntroDone(true); }} />
+      )}
       <div className="noise" aria-hidden="true" />
       <div className="bg-orb orb-1" aria-hidden="true" />
       <div className="bg-orb orb-2" aria-hidden="true" />
