@@ -1,61 +1,34 @@
 
 
-## "Code Canvas Awakens" — Premium Intro Redesign
+## Fix Tutorial Alignment
 
-Complete rewrite of `IntroSplash.tsx` to create a calm, purposeful animation that visually demonstrates what Explyn does: raw code → structure → understanding.
+The tutorial speech bubbles don't align properly on the 393px mobile viewport. The issues:
 
-### The Experience (4.5s total)
+1. **SpeechBubble uses `absolute` positioning** inside the fixed overlay — this is fine structurally, but the underlying page scrolls and content can shift visually.
+2. **The overlay container doesn't prevent scroll** — the page behind scrolls freely, making the tutorial feel disconnected.
+3. **Step 4 (code demo) can overflow** on small screens — the speech bubble + code demo stacked vertically may exceed viewport height at 617px.
+4. **No `overflow-y-auto`** on the overlay — if content is taller than the screen, it clips.
 
-**Phase 0 (0–0.8s) — Quiet opening**
-Dark screen with a single soft pulse dot in the center, breathing slowly. No text. The app is "thinking."
+### Changes
 
-**Phase 1 (0.8–2.2s) — Code tree assembles**
-The pulse dissolves. Thin lines draw outward from center. Nodes appear in layers:
-- First: file names (`App.tsx`, `auth/`, `api/`, `utils/`)
-- Then: deeper structure (`UserService`, `Router`, `Database`)
-- Connected by thin animated lines (SVG paths with `stroke-dashoffset` animation)
-- Each node fades in with a slight scale-up, staggered 120ms apart
+**`src/components/onboarding/OnboardingTutorial.tsx`**:
+- Add `overflow-hidden` to the body when the tutorial is active (prevent background scroll)
+- Add `overflow-y-auto` to the fixed overlay container so tall steps can scroll
+- Change the overlay to use `flex items-center justify-center` for consistent centering instead of relying on SpeechBubble's absolute positioning
 
-**Phase 2 (2.2–3.5s) — Intelligence moment**
-A few key nodes glow softly. Small labels appear beside them: "structure", "logic", "flow", "dependencies". The tree subtly reorganizes — nodes shift positions slightly to suggest the transformation from raw code to a knowledge map.
+**`src/components/onboarding/SpeechBubble.tsx`**:
+- When `position="center"`, switch from `absolute top-1/2 left-1/2 -translate` to a simpler flex-child approach (no absolute positioning needed when parent is a flex centering container)
+- Increase `max-w-[340px]` to `max-w-[380px]` for slightly more room on mobile
+- Ensure the bubble doesn't overflow the viewport by adding `max-h-[85vh] overflow-y-auto` to the bubble body
 
-**Phase 3 (3.5–4.5s) — Morph into app**
-The entire structure contracts toward center, nodes fade, the "explyn" wordmark appears where the center node was, tagline fades in below, then the whole thing scales up and fades out into the actual page.
-
-### Technical Approach
-
-**`src/components/IntroSplash.tsx`** — Full rewrite:
-- Use inline SVG for the node-and-line graph (no external deps)
-- Define ~10 nodes with x,y positions, connected by ~8 edges
-- Animate with CSS transitions + `stroke-dasharray`/`stroke-dashoffset` for line drawing
-- Phase management via `useState` + `setTimeout` timeline (same pattern as current)
-- Labels ("structure", "logic", etc.) appear as absolutely-positioned spans near specific nodes
-- Exit animation: nodes scale to 0, wordmark scales in, then entire overlay fades
-
-**`src/index.css`** — Add keyframes:
-- `@keyframes draw-line` for SVG stroke animation
-- `@keyframes node-appear` for node scale-in with glow
-- `@keyframes pulse-soft` for the opening dot
-
-**`src/pages/Index.tsx`** — No changes needed (already wired up)
-
-### Node graph data structure
-```text
-        auth/
-       /
-App.tsx --- api/ --- Database
-       \
-        utils/ --- Router
-                    |
-                UserService
-```
-
-Each node: `{ id, label, x, y, glowLabel? }`. Edges: `{ from, to }`. Positions calculated relative to a centered 400x300 viewBox, responsive via SVG scaling.
+**`src/components/onboarding/OnboardingTutorial.tsx` — Step 4 (code demo)**:
+- Add `overflow-y-auto` and `max-h-screen` to the step 4 container
+- Reduce gap/padding so both the speech bubble and code demo fit within 617px
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/IntroSplash.tsx` | Full rewrite — SVG graph animation, 4 phases, node/edge system |
-| `src/index.css` | Add 3 keyframes for line-draw, node-appear, pulse |
+| `src/components/onboarding/SpeechBubble.tsx` | Wider max-width, scroll support for tall content, better centering |
+| `src/components/onboarding/OnboardingTutorial.tsx` | Lock body scroll, flex-center layout, fix step 4 overflow |
 
