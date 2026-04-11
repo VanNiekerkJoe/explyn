@@ -51,6 +51,7 @@ const Index = () => {
               <span className="hidden sm:block text-xs uppercase tracking-[0.15em] text-muted-foreground">Code Explainer</span>
             </div>
             <div className="flex items-center gap-3">
+              <button onClick={() => navigate("/pricing")} className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pricing</button>
               {loggedIn ? (
                 <button onClick={() => navigate("/dashboard")} className="btn-ghost text-sm">Dashboard</button>
               ) : (
