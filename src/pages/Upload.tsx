@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload as UploadIcon, FileCode, FolderOpen, ClipboardPaste, Trash2, ArrowLeft, ArrowRight, Code2, Bug, GraduationCap, Github, Archive, Loader2, Link } from "lucide-react";
+import { Upload as UploadIcon, FileCode, FolderOpen, ClipboardPaste, Trash2, ArrowLeft, ArrowRight, Code2, Bug, GraduationCap, Github, Archive, Loader2, Link, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -244,6 +245,8 @@ const Upload = () => {
 
   const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
 
+  const [savingProject, setSavingProject] = useState(false);
+
   const handleAnalyze = () => {
     if (files.length === 0) {
       toast({ title: "No files to analyse", variant: "destructive" });
@@ -253,6 +256,47 @@ const Upload = () => {
     sessionStorage.setItem("explyn_level", level);
     sessionStorage.setItem("explyn_mode", mode);
     navigate("/report");
+  };
+
+  const handleSaveAsProject = async () => {
+    if (files.length === 0) {
+      toast({ title: "No files to save", variant: "destructive" });
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { navigate("/auth"); return; }
+
+    setSavingProject(true);
+    const name = prompt("Project name:") || files[0]?.path?.split("/")[1] || "Untitled Project";
+    const fileStructure = files.map((f) => ({ path: f.path, language: f.language }));
+
+    const { data: project, error: projErr } = await supabase
+      .from("projects")
+      .insert({ user_id: session.user.id, name, file_structure: fileStructure })
+      .select()
+      .single();
+
+    if (projErr || !project) {
+      toast({ title: "Error creating project", description: projErr?.message, variant: "destructive" });
+      setSavingProject(false);
+      return;
+    }
+
+    // Insert files in batches
+    const batch = files.map((f) => ({
+      project_id: project.id,
+      path: f.path,
+      content: f.content,
+      language: f.language,
+    }));
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < batch.length; i += BATCH_SIZE) {
+      await supabase.from("project_files").insert(batch.slice(i, i + BATCH_SIZE));
+    }
+
+    setSavingProject(false);
+    toast({ title: "Project saved!" });
+    navigate(`/project/${project.id}`);
   };
 
   const langCounts = files.reduce<Record<string, number>>((acc, f) => {
@@ -488,9 +532,15 @@ const Upload = () => {
             </div>
           </div>
 
-          <button onClick={handleAnalyze} disabled={files.length === 0} className="btn-primary w-full py-4 text-base disabled:opacity-30 disabled:cursor-not-allowed">
-            {mode === "debug" ? "Debug" : mode === "learn" ? "Create lesson from" : "Analyse"} {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-5 w-5" />
-          </button>
+          <div className="flex gap-3">
+            <button onClick={handleAnalyze} disabled={files.length === 0} className="btn-primary flex-1 py-4 text-base disabled:opacity-30 disabled:cursor-not-allowed">
+              {mode === "debug" ? "Debug" : mode === "learn" ? "Create lesson from" : "Analyse"} {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-5 w-5" />
+            </button>
+            <button onClick={handleSaveAsProject} disabled={files.length === 0 || savingProject} className="btn-ghost py-4 px-6 text-base disabled:opacity-30 gap-2">
+              {savingProject ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+              Save as Project
+            </button>
+          </div>
         </div>
       </div>
     </div>
