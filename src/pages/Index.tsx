@@ -77,8 +77,7 @@ const Index = () => {
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-lg font-bold tracking-tight">explyn</span>
-              <span className="hidden sm:block text-xs uppercase tracking-[0.15em] text-muted-foreground">Code Explainer</span>
+              <span className="text-lg font-bold tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
             </div>
             <div className="flex items-center gap-3">
               <button onClick={() => navigate("/pricing")} className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pricing</button>
@@ -212,7 +211,7 @@ const Index = () => {
 
         <footer className="border-t border-border/30 py-10 px-6">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground tracking-tight">explyn</span>
+            <span className="font-semibold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
             <span>AI-powered code analysis</span>
           </div>
         </footer>

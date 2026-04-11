@@ -283,7 +283,7 @@ const IntroSplash = ({ onComplete }: IntroSplashProps) => {
           }}
         />
         <span className="text-5xl sm:text-7xl font-bold tracking-tight text-foreground">
-          explyn
+          Explyn<span className="text-muted-foreground">.</span>
         </span>
         <p
           className={`text-base sm:text-xl text-muted-foreground tracking-wide transition-all duration-700 ease-out ${

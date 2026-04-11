@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Code2, Bug, GraduationCap, Library, LogOut, User, Plus, Search, Trash2, FolderOpen, Zap, Layers } from "lucide-react";
+import { Code2, Bug, GraduationCap, Library, LogOut, Plus, Search, Trash2, FolderOpen, Zap, Layers } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useCredits } from "@/hooks/useCredits";
@@ -83,16 +83,18 @@ const Dashboard = () => {
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       <div className="noise" aria-hidden="true" />
+      <div className="bg-orb orb-1" aria-hidden="true" />
       <div className="bg-orb orb-2" aria-hidden="true" />
+      <div className="bg-orb orb-3" aria-hidden="true" />
       <div className="relative z-10">
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <button onClick={() => navigate("/")} className="font-bold tracking-tight">explyn</button>
+            <button onClick={() => navigate("/")} className="text-lg font-bold tracking-tight">Explyn<span className="text-muted-foreground">.</span></button>
             <div className="flex items-center gap-3">
               <button onClick={() => navigate("/upload")} className="btn-primary text-sm">
                 <Plus className="h-4 w-4 mr-1" /> New analysis
               </button>
-              <button onClick={handleLogout} className="text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={handleLogout} className="btn-ghost text-sm px-3 py-2">
                 <LogOut className="h-4 w-4" />
               </button>
             </div>
@@ -100,8 +102,20 @@ const Dashboard = () => {
         </nav>
 
         <div className="pt-28 pb-16 px-6 max-w-6xl mx-auto">
+          {/* Hero header */}
+          <div className="mb-10">
+            <div className="animate-fade-in-up">
+              <p className="eyebrow mb-3">Dashboard</p>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                Your library
+              </h1>
+              <p className="text-muted-foreground text-sm mt-2">{user?.email}</p>
+            </div>
+          </div>
+
+          {/* Credits bar */}
           {credits && (
-            <div className="glass-panel rounded-2xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="animate-fade-in-up-delay-1 glass-panel rounded-2xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
                   <Zap className="h-4 w-4 text-foreground" />
@@ -120,26 +134,15 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="eyebrow mb-2">Dashboard</p>
-              <h1 className="text-3xl font-bold tracking-tight">Your library</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{user?.email}</span>
-            </div>
-          </div>
-
           {/* Tabs */}
-          <div className="flex gap-1 mb-6 p-1 glass-panel rounded-full w-fit">
-            <button onClick={() => setActiveTab("projects")} className={`px-5 py-2 rounded-full text-sm transition-colors ${activeTab === "projects" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+          <div className="animate-fade-in-up-delay-2 flex gap-1 mb-8 p-1 glass-panel rounded-full w-fit">
+            <button onClick={() => setActiveTab("projects")} className={`px-5 py-2 rounded-full text-sm transition-all duration-200 ${activeTab === "projects" ? "bg-foreground text-background font-medium" : "text-muted-foreground hover:text-foreground"}`}>
               <Layers className="h-3.5 w-3.5 inline mr-2" />Projects ({projects.length})
             </button>
-            <button onClick={() => setActiveTab("snippets")} className={`px-5 py-2 rounded-full text-sm transition-colors ${activeTab === "snippets" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+            <button onClick={() => setActiveTab("snippets")} className={`px-5 py-2 rounded-full text-sm transition-all duration-200 ${activeTab === "snippets" ? "bg-foreground text-background font-medium" : "text-muted-foreground hover:text-foreground"}`}>
               <Library className="h-3.5 w-3.5 inline mr-2" />Snippets ({snippets.length})
             </button>
-            <button onClick={() => setActiveTab("collections")} className={`px-5 py-2 rounded-full text-sm transition-colors ${activeTab === "collections" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
+            <button onClick={() => setActiveTab("collections")} className={`px-5 py-2 rounded-full text-sm transition-all duration-200 ${activeTab === "collections" ? "bg-foreground text-background font-medium" : "text-muted-foreground hover:text-foreground"}`}>
               <FolderOpen className="h-3.5 w-3.5 inline mr-2" />Collections ({collections.length})
             </button>
           </div>
