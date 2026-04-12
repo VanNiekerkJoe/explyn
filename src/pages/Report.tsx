@@ -93,16 +93,12 @@ const Report = () => {
   const analyzeCode = async (files: UploadedFile[], level: string, mode: string) => {
     setLoading(true);
     setProgress(10);
-
-    // Check credits (allow unauthenticated users a free pass for now)
     const { data: { session } } = await supabase.auth.getSession();
     if (session && !hasCredits) {
       setCreditGated(true);
       setLoading(false);
       return;
     }
-
-    // Deduct credit for authenticated users
     if (session) {
       const success = await useCredit(1, `${mode} analysis`);
       if (!success) {
@@ -111,7 +107,6 @@ const Report = () => {
         return;
       }
     }
-
     try {
       const filesSummary = files.map((f) => ({
         path: f.path, language: f.language, content: f.content.slice(0, 8000),
@@ -213,11 +208,11 @@ const Report = () => {
     code({ className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || "");
       return match ? (
-        <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" customStyle={{ borderRadius: "0.75rem", fontSize: "0.8rem", background: "hsl(0 0% 8%)" }}>
+        <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" customStyle={{ borderRadius: "0.75rem", fontSize: "0.75rem", background: "hsl(0 0% 8%)" }}>
           {String(children).replace(/\n$/, "")}
         </SyntaxHighlighter>
       ) : (
-        <code className="bg-muted px-1.5 py-0.5 rounded text-sm" {...props}>{children}</code>
+        <code className="bg-muted px-1.5 py-0.5 rounded text-xs sm:text-sm" {...props}>{children}</code>
       );
     },
   };
@@ -231,50 +226,50 @@ const Report = () => {
 
       <div className="relative z-10">
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <button onClick={() => navigate("/upload")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+            <button onClick={() => navigate("/upload")} className="flex items-center gap-2 sm:gap-3 text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" />
-              <span className="font-bold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
+              <span className="font-bold text-foreground tracking-tight text-sm sm:text-base">Explyn<span className="text-muted-foreground">.</span></span>
             </button>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setShowCode(!showCode)} className={`btn-ghost text-sm gap-2 ${showCode ? "text-foreground" : ""}`}>
-                <Code2 className="h-4 w-4" /> Code
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button onClick={() => setShowCode(!showCode)} className={`btn-ghost text-xs sm:text-sm gap-1 sm:gap-2 px-2 sm:px-3 ${showCode ? "text-foreground" : ""}`}>
+                <Code2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Code</span>
               </button>
-              <button onClick={saveSnippet} disabled={saving || loading} className="btn-ghost text-sm gap-2 disabled:opacity-40">
-                <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+              <button onClick={saveSnippet} disabled={saving || loading} className="btn-ghost text-xs sm:text-sm gap-1 sm:gap-2 px-2 sm:px-3 disabled:opacity-40">
+                <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">{saving ? "Saving…" : "Save"}</span>
               </button>
-              <button onClick={() => setChatOpen(!chatOpen)} className="btn-ghost text-sm gap-2">
-                <MessageCircle className="h-4 w-4" /> Ask
+              <button onClick={() => setChatOpen(!chatOpen)} className="btn-ghost text-xs sm:text-sm gap-1 sm:gap-2 px-2 sm:px-3">
+                <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Ask</span>
               </button>
             </div>
           </div>
         </nav>
 
-        <div className="pt-28 pb-16 px-6 max-w-6xl mx-auto flex gap-6">
-          <div className={`flex-1 min-w-0 transition-all duration-300 ${chatOpen ? "max-w-[58%]" : ""}`}>
+        <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 sm:gap-6">
+          <div className={`flex-1 min-w-0 transition-all duration-300 ${chatOpen ? "lg:max-w-[58%]" : ""}`}>
             {/* Mode badge */}
-            <div className="flex items-center gap-3 mb-6">
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <span className="eyebrow">{MODE_LABELS[currentMode] || "Report"}</span>
-              <span className="px-2 py-0.5 rounded-full border border-border text-[10px] text-muted-foreground capitalize">{levelRef.current}</span>
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+              <span className="eyebrow text-[10px] sm:text-xs">{MODE_LABELS[currentMode] || "Report"}</span>
+              <span className="px-2 py-0.5 rounded-full border border-border text-[9px] sm:text-[10px] text-muted-foreground capitalize">{levelRef.current}</span>
             </div>
 
             {creditGated && (
-              <div className="glass-panel rounded-2xl p-8 text-center mb-8">
-                <Zap className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-                <h3 className="font-semibold text-lg mb-2">Out of credits</h3>
-                <p className="text-sm text-muted-foreground mb-6">
+              <div className="glass-panel rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center mb-6 sm:mb-8">
+                <Zap className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-semibold text-base sm:text-lg mb-2">Out of credits</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                   You've used all your credits this month. Upgrade your plan or wait for the reset.
                 </p>
-                <button onClick={() => navigate("/pricing")} className="btn-primary">View plans</button>
+                <button onClick={() => navigate("/pricing")} className="btn-primary text-sm">View plans</button>
               </div>
             )}
 
             {loading && (
-              <div className="glass-panel rounded-2xl p-6 mb-8">
+              <div className="glass-panel rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
                 <div className="flex items-center gap-3 mb-3">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs sm:text-sm text-muted-foreground">
                     {modeRef.current === "debug" ? "Scanning for bugs…" : modeRef.current === "learn" ? "Creating lesson…" : "Analysing your code…"}
                   </span>
                 </div>
@@ -285,7 +280,7 @@ const Report = () => {
             )}
 
             {sections.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {sections.map((section, i) => {
                   const lines = section.split("\n");
                   const title = lines[0]?.replace(/^#{1,3}\s*/, "") || `Section ${i + 1}`;
@@ -293,15 +288,15 @@ const Report = () => {
                   const isOpen = expandedSections.has(i);
                   return (
                     <div key={i} className="glass-panel rounded-xl overflow-hidden">
-                      <button onClick={() => toggleSection(i)} className="w-full flex items-center justify-between p-5 text-left hover:bg-foreground/[0.03] transition-colors">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground font-mono">{String(i + 1).padStart(2, "0")}</span>
-                          <span className="font-semibold">{title}</span>
+                      <button onClick={() => toggleSection(i)} className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-foreground/[0.03] transition-colors">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <span className="text-[10px] sm:text-xs text-muted-foreground font-mono shrink-0">{String(i + 1).padStart(2, "0")}</span>
+                          <span className="font-semibold text-sm sm:text-base truncate">{title}</span>
                         </div>
-                        {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                        {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
                       </button>
                       {isOpen && (
-                        <div className="px-5 pb-5 prose prose-sm prose-invert max-w-none">
+                        <div className="px-4 sm:px-5 pb-4 sm:pb-5 prose prose-sm prose-invert max-w-none text-sm">
                           <ReactMarkdown components={mdComponents}>{body}</ReactMarkdown>
                         </div>
                       )}
@@ -310,17 +305,17 @@ const Report = () => {
                 })}
               </div>
             ) : !loading ? (
-              <div className="glass-panel rounded-2xl p-12 text-center">
-                <p className="text-muted-foreground">No report generated yet.</p>
+              <div className="glass-panel rounded-2xl p-8 sm:p-12 text-center">
+                <p className="text-muted-foreground text-sm">No report generated yet.</p>
               </div>
             ) : null}
 
             {/* Interactive source code viewer */}
             {showCode && filesRef.current.length > 0 && (
-              <div className="mt-6 space-y-4">
+              <div className="mt-4 sm:mt-6 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Code2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="eyebrow">Interactive Source · Click any token to explain</span>
+                  <Code2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                  <span className="eyebrow text-[10px] sm:text-xs">Interactive Source · Click any expression to explain</span>
                 </div>
                 {filesRef.current.map((file, i) => (
                   <InteractiveCodeViewer
@@ -339,64 +334,66 @@ const Report = () => {
             )}
           </div>
 
-          {/* Chat panel */}
+          {/* Chat panel - full screen overlay on mobile, side panel on desktop */}
           {chatOpen && (
-            <div className="w-[40%] shrink-0 glass-panel rounded-2xl flex flex-col max-h-[calc(100vh-8rem)] sticky top-24">
-              <div className="p-5 border-b border-border/50 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-sm">Ask about your code</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Context-aware AI assistant</p>
+            <div className="fixed inset-0 z-50 lg:relative lg:inset-auto lg:z-auto lg:w-[40%] lg:shrink-0">
+              <div className="h-full lg:h-auto glass-panel lg:rounded-2xl flex flex-col lg:max-h-[calc(100vh-8rem)] lg:sticky lg:top-24 bg-background lg:bg-transparent">
+                <div className="p-4 sm:p-5 border-b border-border/50 flex items-center justify-between safe-area-top">
+                  <div>
+                    <h3 className="font-semibold text-sm">Ask about your code</h3>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Context-aware AI assistant</p>
+                  </div>
+                  <button onClick={() => setChatOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                    <X className="h-5 w-5 lg:h-4 lg:w-4" />
+                  </button>
                 </div>
-                <button onClick={() => setChatOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-3">
-                  {chatMessages.length === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-muted-foreground">Ask anything about your codebase</p>
-                      <div className="mt-4 space-y-2">
-                        {["Why is this code structured this way?", "Can this be optimised?", "What pattern is used here?"].map((q) => (
-                          <button key={q} onClick={() => { setChatInput(q); }} className="block w-full text-left text-xs text-muted-foreground px-3 py-2 rounded-lg border border-border hover:border-foreground/20 transition-colors">
-                            {q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {chatMessages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === "user" ? "bg-foreground text-background" : "bg-card border border-border"}`}>
-                        {msg.role === "assistant" ? (
-                          <div className="prose prose-sm prose-invert max-w-none">
-                            <ReactMarkdown components={mdComponents}>{msg.content}</ReactMarkdown>
-                          </div>
-                        ) : msg.content}
-                      </div>
-                    </div>
-                  ))}
-                  {chatLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-card border border-border rounded-2xl px-4 py-2.5">
-                        <div className="flex gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" />
-                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: "0.15s" }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: "0.3s" }} />
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-3">
+                    {chatMessages.length === 0 && (
+                      <div className="text-center py-6 sm:py-8">
+                        <p className="text-xs sm:text-sm text-muted-foreground">Ask anything about your codebase</p>
+                        <div className="mt-4 space-y-2">
+                          {["Why is this code structured this way?", "Can this be optimised?", "What pattern is used here?"].map((q) => (
+                            <button key={q} onClick={() => { setChatInput(q); }} className="block w-full text-left text-xs text-muted-foreground px-3 py-2.5 rounded-lg border border-border hover:border-foreground/20 transition-colors">
+                              {q}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                    </div>
-                  )}
-                  <div ref={chatEndRef} />
+                    )}
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[85%] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm ${msg.role === "user" ? "bg-foreground text-background" : "bg-card border border-border"}`}>
+                          {msg.role === "assistant" ? (
+                            <div className="prose prose-sm prose-invert max-w-none">
+                              <ReactMarkdown components={mdComponents}>{msg.content}</ReactMarkdown>
+                            </div>
+                          ) : msg.content}
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-card border border-border rounded-2xl px-4 py-2.5">
+                          <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: "0.15s" }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: "0.3s" }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+                </ScrollArea>
+                <div className="p-4 border-t border-border/50 safe-area-bottom">
+                  <form onSubmit={(e) => { e.preventDefault(); sendChatMessage(); }} className="flex gap-2">
+                    <Input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask a question…" className="bg-card border-border rounded-full text-sm" />
+                    <button type="submit" disabled={chatLoading || !chatInput.trim()} className="btn-primary p-2.5 rounded-full disabled:opacity-40">
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </form>
                 </div>
-              </ScrollArea>
-              <div className="p-4 border-t border-border/50">
-                <form onSubmit={(e) => { e.preventDefault(); sendChatMessage(); }} className="flex gap-2">
-                  <Input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask a question…" className="bg-card border-border rounded-full text-sm" />
-                  <button type="submit" disabled={chatLoading || !chatInput.trim()} className="btn-primary p-3 rounded-full disabled:opacity-30">
-                    <Send className="h-4 w-4" />
-                  </button>
-                </form>
               </div>
             </div>
           )}

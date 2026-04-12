@@ -317,17 +317,17 @@ const Upload = () => {
 
       <div className="relative z-10">
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-          <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-            <button onClick={() => navigate("/")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+            <button onClick={() => navigate("/")} className="flex items-center gap-2 sm:gap-3 text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" />
-              <span className="font-bold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
+              <span className="font-bold text-foreground tracking-tight text-sm sm:text-base">Explyn<span className="text-muted-foreground">.</span></span>
             </button>
           </div>
         </nav>
 
-        <div className="pt-28 pb-16 px-6 max-w-4xl mx-auto">
-          <p className="eyebrow mb-4">Upload</p>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Add your code</h1>
+        <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 max-w-4xl mx-auto">
+          <p className="eyebrow mb-3 sm:mb-4">Upload</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-2">Add your code</h1>
           <p className="text-muted-foreground mb-8">Drop a folder, upload a ZIP, import from GitHub, or paste snippets.</p>
 
           {/* Mode selector */}
@@ -532,12 +532,12 @@ const Upload = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <button onClick={handleAnalyze} disabled={files.length === 0} className="btn-primary flex-1 py-4 text-base disabled:opacity-30 disabled:cursor-not-allowed">
-              {mode === "debug" ? "Debug" : mode === "learn" ? "Create lesson from" : "Analyse"} {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-5 w-5" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={handleAnalyze} disabled={files.length === 0} className="btn-primary flex-1 py-3 sm:py-4 text-sm sm:text-base disabled:opacity-30 disabled:cursor-not-allowed">
+              {mode === "debug" ? "Debug" : mode === "learn" ? "Create lesson from" : "Analyse"} {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </button>
-            <button onClick={handleSaveAsProject} disabled={files.length === 0 || savingProject} className="btn-ghost py-4 px-6 text-base disabled:opacity-30 gap-2">
-              {savingProject ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            <button onClick={handleSaveAsProject} disabled={files.length === 0 || savingProject} className="btn-ghost py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base disabled:opacity-30 gap-2">
+              {savingProject ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Save className="h-4 w-4 sm:h-5 sm:w-5" />}
               Save as Project
             </button>
           </div>
