@@ -92,7 +92,7 @@ const Index = () => {
         </nav>
 
         {/* Hero */}
-        <section className="pt-32 sm:pt-40 pb-20 px-6">
+        <section className="pt-24 sm:pt-32 lg:pt-40 pb-16 sm:pb-20 px-4 sm:px-6">
           <div className="max-w-6xl mx-auto">
             <div className="animate-fade-in-up">
               <p className="eyebrow mb-6">Explyn / Code Explainer</p>
