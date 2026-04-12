@@ -96,7 +96,7 @@ const Index = () => {
           <div className="max-w-6xl mx-auto">
             <div className="animate-fade-in-up">
               <p className="eyebrow mb-6">Explyn / Code Explainer</p>
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] max-w-4xl">
+              <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.05] max-w-4xl">
                 Understand any codebase,{" "}
                 <span className="text-muted-foreground">deeply.</span>
               </h1>
