@@ -49,6 +49,7 @@ const ProjectView = () => {
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [newNote, setNewNote] = useState("");
   const [explainLoading, setExplainLoading] = useState(false);
+  const [showFileTree, setShowFileTree] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
