@@ -235,8 +235,6 @@ const ProjectView = () => {
 
   if (!project) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading…</div>;
 
-  const [showFileTree, setShowFileTree] = useState(false);
-
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       <div className="noise" aria-hidden="true" />
