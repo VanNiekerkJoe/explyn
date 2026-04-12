@@ -532,12 +532,12 @@ const Upload = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <button onClick={handleAnalyze} disabled={files.length === 0} className="btn-primary flex-1 py-4 text-base disabled:opacity-30 disabled:cursor-not-allowed">
-              {mode === "debug" ? "Debug" : mode === "learn" ? "Create lesson from" : "Analyse"} {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-5 w-5" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={handleAnalyze} disabled={files.length === 0} className="btn-primary flex-1 py-3 sm:py-4 text-sm sm:text-base disabled:opacity-30 disabled:cursor-not-allowed">
+              {mode === "debug" ? "Debug" : mode === "learn" ? "Create lesson from" : "Analyse"} {files.length} file{files.length !== 1 ? "s" : ""} <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </button>
-            <button onClick={handleSaveAsProject} disabled={files.length === 0 || savingProject} className="btn-ghost py-4 px-6 text-base disabled:opacity-30 gap-2">
-              {savingProject ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            <button onClick={handleSaveAsProject} disabled={files.length === 0 || savingProject} className="btn-ghost py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base disabled:opacity-30 gap-2">
+              {savingProject ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Save className="h-4 w-4 sm:h-5 sm:w-5" />}
               Save as Project
             </button>
           </div>
