@@ -234,60 +234,74 @@ const ProjectView = () => {
 
   if (!project) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading…</div>;
 
+  const [showFileTree, setShowFileTree] = useState(false);
+
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       <div className="noise" aria-hidden="true" />
       <div className="relative z-10">
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-          <div className="max-w-[90rem] mx-auto px-4 h-14 flex items-center justify-between">
-            <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <div className="max-w-[90rem] mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2">
+            <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground hover:text-foreground transition-colors shrink-0">
               <ArrowLeft className="h-4 w-4" />
-              <span className="font-bold text-foreground tracking-tight text-sm">explyn</span>
+              <span className="font-bold text-foreground tracking-tight text-sm">Explyn<span className="text-muted-foreground">.</span></span>
             </button>
-            <span className="text-sm font-medium truncate max-w-[200px]">{project.name}</span>
-            <button onClick={() => setChatOpen(!chatOpen)} className="btn-ghost text-sm gap-2">
-              <MessageCircle className="h-4 w-4" /> Ask
-            </button>
+            <span className="text-xs sm:text-sm font-medium truncate max-w-[120px] sm:max-w-[200px]">{project.name}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Mobile file tree toggle */}
+              <button onClick={() => setShowFileTree(!showFileTree)} className="btn-ghost text-xs gap-1 px-2 py-1.5 lg:hidden">
+                <FileCode className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setChatOpen(!chatOpen)} className="btn-ghost text-xs sm:text-sm gap-1 sm:gap-2 px-2 sm:px-3">
+                <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Ask</span>
+              </button>
+            </div>
           </div>
         </nav>
 
-        <div className="pt-14 flex h-[calc(100vh-56px)]">
-          {/* File tree sidebar */}
-          <div className="w-60 shrink-0 border-r border-border/40 bg-card/50 overflow-y-auto">
-            <div className="p-3 border-b border-border/40">
+        <div className="pt-14 flex flex-col lg:flex-row h-[calc(100vh-56px)]">
+          {/* File tree sidebar - overlay on mobile, fixed on desktop */}
+          {showFileTree && (
+            <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden" onClick={() => setShowFileTree(false)} />
+          )}
+          <div className={`${showFileTree ? "fixed inset-y-0 left-0 z-50 w-64 pt-14" : "hidden"} lg:relative lg:block lg:w-60 shrink-0 border-r border-border/40 bg-card/50 overflow-y-auto`}>
+            <div className="p-3 border-b border-border/40 flex items-center justify-between">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Files ({files.length})</p>
+              <button onClick={() => setShowFileTree(false)} className="lg:hidden text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
             </div>
             <ProjectFileTree
               files={files.map((f) => ({ path: f.path, language: f.language }))}
-              onSelectFile={setSelectedPath}
+              onSelectFile={(path) => { setSelectedPath(path); setShowFileTree(false); }}
               selectedPath={selectedPath}
             />
           </div>
 
           {/* Main content */}
-          <div className={`flex-1 min-w-0 flex flex-col transition-all ${chatOpen ? "mr-[380px]" : ""}`}>
+          <div className={`flex-1 min-w-0 flex flex-col transition-all ${chatOpen ? "lg:mr-[380px]" : ""}`}>
             {/* Tabs */}
-            <div className="border-b border-border/40 px-4 py-2 flex items-center gap-1 bg-background/80">
+            <div className="border-b border-border/40 px-2 sm:px-4 py-2 flex items-center gap-0.5 sm:gap-1 bg-background/80 overflow-x-auto">
               {(["code", "explanation", "map", "notes"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-colors capitalize ${
+                  className={`px-2.5 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs transition-colors capitalize whitespace-nowrap ${
                     activeTab === tab ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab === "map" ? "System Map" : tab}
+                  {tab === "map" ? "Map" : tab}
                 </button>
               ))}
               {activeTab === "code" && selectedFile && !selectedFile.explanation && (
-                <button onClick={explainFile} disabled={explainLoading} className="ml-auto btn-ghost text-xs gap-1.5">
+                <button onClick={explainFile} disabled={explainLoading} className="ml-auto btn-ghost text-[10px] sm:text-xs gap-1 sm:gap-1.5 shrink-0">
                   {explainLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileCode className="h-3 w-3" />}
-                  Explain this file
+                  <span className="hidden sm:inline">Explain this file</span><span className="sm:hidden">Explain</span>
                 </button>
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6">
               {activeTab === "code" && selectedFile && (
                 <InteractiveCodeViewer
                   code={selectedFile.content}
@@ -367,7 +381,7 @@ const ProjectView = () => {
 
           {/* Chat panel */}
           {chatOpen && (
-            <div className="fixed right-0 top-14 bottom-0 w-[380px] border-l border-border/40 bg-background flex flex-col z-40">
+            <div className="fixed inset-0 z-40 lg:inset-auto lg:right-0 lg:top-14 lg:bottom-0 lg:w-[380px] border-l border-border/40 bg-background flex flex-col pt-14 lg:pt-0">
               <div className="p-4 border-b border-border/40 flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-sm">Ask your codebase</h3>
