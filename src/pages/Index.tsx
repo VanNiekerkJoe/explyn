@@ -77,15 +77,15 @@ const Index = () => {
         <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
             <span className="text-base font-bold tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button onClick={() => navigate("/pricing")} className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pricing</button>
               {loggedIn ? (
-                <button onClick={() => navigate("/dashboard")} className="px-3 py-1.5 rounded-full border border-border text-xs font-medium text-foreground hover:bg-foreground hover:text-background transition-all">Dashboard</button>
+                <button onClick={() => navigate("/dashboard")} className="px-2.5 sm:px-3 py-1.5 rounded-full border border-border text-[11px] sm:text-xs font-medium text-foreground hover:bg-foreground hover:text-background transition-all">Dashboard</button>
               ) : (
-                <button onClick={() => navigate("/auth")} className="px-3 py-1.5 rounded-full border border-border text-xs font-medium text-foreground hover:bg-foreground hover:text-background transition-all">Sign in</button>
+                <button onClick={() => navigate("/auth")} className="px-2.5 sm:px-3 py-1.5 rounded-full border border-border text-[11px] sm:text-xs font-medium text-foreground hover:bg-foreground hover:text-background transition-all">Sign in</button>
               )}
-              <button onClick={() => navigate("/upload")} className="px-4 py-1.5 rounded-full bg-foreground text-background text-xs font-medium transition-all hover:bg-foreground/90 flex items-center gap-1.5">
-                Get started <ArrowRight className="h-3 w-3" />
+              <button onClick={() => navigate("/upload")} className="px-3 sm:px-4 py-1.5 rounded-full bg-foreground text-background text-[11px] sm:text-xs font-medium transition-all hover:bg-foreground/90 flex items-center gap-1.5">
+                <span className="hidden sm:inline">Get started</span><span className="sm:hidden">Start</span> <ArrowRight className="h-3 w-3" />
               </button>
             </div>
           </div>
