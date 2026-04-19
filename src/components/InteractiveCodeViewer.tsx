@@ -244,7 +244,7 @@ const InteractiveCodeViewer = ({ code, language, fileName, level, onAskFollowUp 
                 <span className="text-xs text-muted-foreground">Analyzing expression…</span>
               </div>
             ) : explanation ? (
-              <ScrollArea className={expanded ? "max-h-[60vh]" : "max-h-56"}>
+              <ScrollArea className={expanded ? "h-[70vh]" : "h-[40vh] sm:h-[45vh]"}>
                 <div className="p-3 space-y-2.5">
                   {/* What This Is */}
                   {explanation.whatThisIs && (
