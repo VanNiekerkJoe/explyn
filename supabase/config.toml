@@ -1,1 +1,4 @@
 project_id = "pvpmpwupsphsmgegxocs"
+
+[functions.learn-ai]
+verify_jwt = false
