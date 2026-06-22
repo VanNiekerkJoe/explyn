@@ -15,6 +15,8 @@ import Pricing from "./pages/Pricing";
 import Learn from "./pages/Learn";
 import Practice from "./pages/Practice";
 import Tutor from "./pages/Tutor";
+import Courses from "./pages/Courses";
+import Course from "./pages/Course";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +40,8 @@ const App = () => (
           <Route path="/learn" element={<Learn />} />
           <Route path="/practice" element={<Practice />} />
           <Route path="/tutor" element={<Tutor />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/courses/:id" element={<Course />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

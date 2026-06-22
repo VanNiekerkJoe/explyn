@@ -1,10 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Code2, GraduationCap, Dumbbell, MessageCircle, Sparkles } from "lucide-react";
+import { ArrowRight, Code2, GraduationCap, Dumbbell, MessageCircle, Sparkles, BookOpen } from "lucide-react";
+import { COURSES } from "@/data/courses";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import IntroSplash, { shouldShowIntro } from "@/components/IntroSplash";
 
 const hubCards = [
+  {
+    id: "courses",
+    icon: BookOpen,
+    title: "Courses",
+    desc: "Structured, multi-lesson courses across Python, JavaScript, TypeScript, SQL, Web, and more — taught at your level.",
+    cta: "Browse courses",
+    route: "/courses",
+    accent: "from-pink-500/15 to-transparent",
+  },
   {
     id: "analyse",
     icon: Code2,
@@ -17,9 +27,9 @@ const hubCards = [
   {
     id: "learn",
     icon: GraduationCap,
-    title: "Teach me coding",
-    desc: "Pick a track or any topic. Get a structured lesson with examples, walkthrough, and practice tasks.",
-    cta: "Start learning",
+    title: "Teach me a topic",
+    desc: "Want a one-off lesson? Type any topic and get a structured walkthrough with examples and practice.",
+    cta: "Start a lesson",
     route: "/learn",
     accent: "from-emerald-500/15 to-transparent",
   },
@@ -146,6 +156,41 @@ const Index = () => {
             })}
           </div>
         </section>
+
+        {/* Featured courses */}
+        <section className="pb-16 sm:pb-24 px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-end justify-between mb-5 sm:mb-6">
+              <div>
+                <p className="eyebrow mb-1.5">Classroom in a box</p>
+                <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Featured courses</h2>
+              </div>
+              <button onClick={() => navigate("/courses")} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                View all <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {COURSES.slice(0, 6).map((c, i) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/courses/${c.id}`)}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="animate-fade-in-up group relative overflow-hidden glass-panel rounded-2xl p-4 sm:p-5 text-left hover-lift transition-all"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${c.color} opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none`} />
+                  <div className="relative">
+                    <div className="text-2xl mb-3">{c.emoji}</div>
+                    <p className="eyebrow mb-1 text-[10px]">{c.language} · {c.level}</p>
+                    <h3 className="text-sm sm:text-base font-semibold tracking-tight mb-1 leading-tight">{c.title}</h3>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground leading-snug line-clamp-2">{c.tagline}</p>
+                    <p className="text-[10px] text-muted-foreground mt-3">{c.lessons.length} lessons</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
 
         {/* Footer */}
         <footer className="border-t border-border/30 py-8 px-6">
