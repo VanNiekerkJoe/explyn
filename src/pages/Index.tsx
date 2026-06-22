@@ -157,6 +157,41 @@ const Index = () => {
           </div>
         </section>
 
+        {/* Featured courses */}
+        <section className="pb-16 sm:pb-24 px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-end justify-between mb-5 sm:mb-6">
+              <div>
+                <p className="eyebrow mb-1.5">Classroom in a box</p>
+                <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Featured courses</h2>
+              </div>
+              <button onClick={() => navigate("/courses")} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                View all <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {COURSES.slice(0, 6).map((c, i) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/courses/${c.id}`)}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="animate-fade-in-up group relative overflow-hidden glass-panel rounded-2xl p-4 sm:p-5 text-left hover-lift transition-all"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${c.color} opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none`} />
+                  <div className="relative">
+                    <div className="text-2xl mb-3">{c.emoji}</div>
+                    <p className="eyebrow mb-1 text-[10px]">{c.language} · {c.level}</p>
+                    <h3 className="text-sm sm:text-base font-semibold tracking-tight mb-1 leading-tight">{c.title}</h3>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground leading-snug line-clamp-2">{c.tagline}</p>
+                    <p className="text-[10px] text-muted-foreground mt-3">{c.lessons.length} lessons</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+
         {/* Footer */}
         <footer className="border-t border-border/30 py-8 px-6">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
