@@ -1,10 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Code2, GraduationCap, Dumbbell, MessageCircle, Sparkles } from "lucide-react";
+import { ArrowRight, Code2, GraduationCap, Dumbbell, MessageCircle, Sparkles, BookOpen } from "lucide-react";
+import { COURSES } from "@/data/courses";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import IntroSplash, { shouldShowIntro } from "@/components/IntroSplash";
 
 const hubCards = [
+  {
+    id: "courses",
+    icon: BookOpen,
+    title: "Courses",
+    desc: "Structured, multi-lesson courses across Python, JavaScript, TypeScript, SQL, Web, and more — taught at your level.",
+    cta: "Browse courses",
+    route: "/courses",
+    accent: "from-pink-500/15 to-transparent",
+  },
   {
     id: "analyse",
     icon: Code2,
@@ -17,9 +27,9 @@ const hubCards = [
   {
     id: "learn",
     icon: GraduationCap,
-    title: "Teach me coding",
-    desc: "Pick a track or any topic. Get a structured lesson with examples, walkthrough, and practice tasks.",
-    cta: "Start learning",
+    title: "Teach me a topic",
+    desc: "Want a one-off lesson? Type any topic and get a structured walkthrough with examples and practice.",
+    cta: "Start a lesson",
     route: "/learn",
     accent: "from-emerald-500/15 to-transparent",
   },
