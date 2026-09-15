@@ -1,36 +1,40 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Code2, Bug, GraduationCap } from "lucide-react";
-import ShareButton from "@/components/ShareButton";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, Code2, Bug, GraduationCap, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import InteractiveCodeViewer from "@/components/InteractiveCodeViewer";
-import type { Database } from "@/integrations/supabase/types";
-
-type Snippet = Database["public"]["Tables"]["snippets"]["Row"];
+import { getSnippet, type Snippet } from "@/lib/localdb";
+import { useToast } from "@/hooks/use-toast";
 
 const modeIcons = { explain: Code2, debug: Bug, learn: GraduationCap };
 
 const SnippetView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [activeTab, setActiveTab] = useState<"code" | "explanation">("explanation");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    supabase.from("snippets").select("*").eq("id", id).single().then(({ data }) => {
-      if (data) setSnippet(data);
-      else navigate("/dashboard");
-    });
-  }, [id]);
+    const found = getSnippet(id);
+    if (found) setSnippet(found);
+    else navigate("/dashboard");
+  }, [id, navigate]);
 
   if (!snippet) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
 
   const ModeIcon = modeIcons[snippet.mode as keyof typeof modeIcons] || Code2;
-  const lang = snippet.language.toLowerCase();
+
+  const copyExplanation = async () => {
+    await navigator.clipboard.writeText(`# ${snippet.title}\n\n${snippet.explanation}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: "Explanation copied" });
+  };
 
   const mdComponents = {
     code({ className, children, ...props }: any) {
@@ -57,12 +61,14 @@ const SnippetView = () => {
               <ArrowLeft className="h-4 w-4" />
               <span className="font-bold text-foreground tracking-tight">Explyn<span className="text-muted-foreground">.</span></span>
             </button>
-            <ShareButton snippetId={snippet.id} isPublic={(snippet as any).is_public} shareSlug={(snippet as any).share_slug} />
+            <button onClick={copyExplanation} className="btn-ghost text-sm gap-2">
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
           </div>
         </nav>
 
         <div className="pt-28 pb-16 px-6 max-w-5xl mx-auto">
-          {/* Header */}
           <div className="flex items-center gap-3 mb-2">
             <ModeIcon className="h-5 w-5 text-muted-foreground" />
             <span className="eyebrow capitalize">{snippet.mode} · {snippet.level}</span>
@@ -73,18 +79,11 @@ const SnippetView = () => {
             <span className="px-3 py-1 rounded-full border border-border text-xs text-muted-foreground">{new Date(snippet.created_at).toLocaleDateString()}</span>
           </div>
 
-          {/* Tabs */}
           <div className="flex gap-1 mb-6 p-1 glass-panel rounded-full w-fit">
-            <button
-              onClick={() => setActiveTab("explanation")}
-              className={`px-5 py-2 rounded-full text-sm transition-colors ${activeTab === "explanation" ? "bg-foreground text-background" : "text-muted-foreground"}`}
-            >
+            <button onClick={() => setActiveTab("explanation")} className={`px-5 py-2 rounded-full text-sm transition-colors ${activeTab === "explanation" ? "bg-foreground text-background" : "text-muted-foreground"}`}>
               Explanation
             </button>
-            <button
-              onClick={() => setActiveTab("code")}
-              className={`px-5 py-2 rounded-full text-sm transition-colors ${activeTab === "code" ? "bg-foreground text-background" : "text-muted-foreground"}`}
-            >
+            <button onClick={() => setActiveTab("code")} className={`px-5 py-2 rounded-full text-sm transition-colors ${activeTab === "code" ? "bg-foreground text-background" : "text-muted-foreground"}`}>
               Source Code
             </button>
           </div>
@@ -96,11 +95,7 @@ const SnippetView = () => {
           )}
 
           {activeTab === "code" && (
-            <InteractiveCodeViewer
-              code={snippet.code}
-              language={snippet.language}
-              level={snippet.level}
-            />
+            <InteractiveCodeViewer code={snippet.code} language={snippet.language} level={snippet.level} />
           )}
         </div>
       </div>
