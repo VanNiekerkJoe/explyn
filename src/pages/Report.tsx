@@ -197,14 +197,14 @@ const Report = () => {
               <span className="px-2 py-0.5 rounded-full border border-border text-[9px] sm:text-[10px] text-muted-foreground capitalize">{levelRef.current}</span>
             </div>
 
-            {creditGated && (
+            {needsAI && (
               <div className="glass-panel rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center mb-6 sm:mb-8">
-                <Zap className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-3 text-muted-foreground" />
-                <h3 className="font-semibold text-base sm:text-lg mb-2">Out of credits</h3>
+                <Cpu className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-semibold text-base sm:text-lg mb-2">Connect your AI first</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
-                  You've used all your credits this month. Upgrade your plan or wait for the reset.
+                  Explyn runs on an AI you choose. Add yours once and everything here works.
                 </p>
-                <button onClick={() => navigate("/pricing")} className="btn-primary text-sm">View plans</button>
+                <button onClick={() => navigate("/settings")} className="btn-primary text-sm">Open settings</button>
               </div>
             )}
 
