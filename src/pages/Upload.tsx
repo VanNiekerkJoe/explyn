@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload as UploadIcon, FileCode, FolderOpen, ClipboardPaste, Trash2, ArrowLeft, ArrowRight, Code2, Bug, GraduationCap, Github, Archive, Loader2, Link, Save } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { createProject } from "@/lib/localdb";
+import { importGithubRepo } from "@/lib/github";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -204,28 +206,10 @@ const Upload = () => {
 
     setGithubLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-import`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ repoUrl: githubUrl.trim() }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast({ title: "Import failed", description: data.error || "Could not fetch repository", variant: "destructive" });
-        return;
-      }
-
-      if (data.files && data.files.length > 0) {
-        setFiles(data.files);
-        toast({ title: `${data.fileCount} files imported from ${data.owner}/${data.repo}` });
+      const { owner, repo, files: imported } = await importGithubRepo(githubUrl.trim(), MAX_FILES);
+      if (imported.length > 0) {
+        setFiles(imported);
+        toast({ title: `${imported.length} files imported from ${owner}/${repo}` });
       } else {
         toast({ title: "No code files found", description: "The repository didn't contain recognizable code files.", variant: "destructive" });
       }
@@ -263,40 +247,19 @@ const Upload = () => {
       toast({ title: "No files to save", variant: "destructive" });
       return;
     }
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { navigate("/auth"); return; }
+    if (!user) { navigate("/auth"); return; }
 
     setSavingProject(true);
-    const name = prompt("Project name:") || files[0]?.path?.split("/")[1] || "Untitled Project";
-    const fileStructure = files.map((f) => ({ path: f.path, language: f.language }));
-
-    const { data: project, error: projErr } = await supabase
-      .from("projects")
-      .insert({ user_id: session.user.id, name, file_structure: fileStructure })
-      .select()
-      .single();
-
-    if (projErr || !project) {
-      toast({ title: "Error creating project", description: projErr?.message, variant: "destructive" });
+    try {
+      const name = prompt("Project name:") || files[0]?.path?.split("/")[1] || "Untitled Project";
+      const project = createProject(user.id, name, files);
+      toast({ title: "Project saved!" });
+      navigate(`/project/${project.id}`);
+    } catch (err: any) {
+      toast({ title: "Error creating project", description: err.message, variant: "destructive" });
+    } finally {
       setSavingProject(false);
-      return;
     }
-
-    // Insert files in batches
-    const batch = files.map((f) => ({
-      project_id: project.id,
-      path: f.path,
-      content: f.content,
-      language: f.language,
-    }));
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < batch.length; i += BATCH_SIZE) {
-      await supabase.from("project_files").insert(batch.slice(i, i + BATCH_SIZE));
-    }
-
-    setSavingProject(false);
-    toast({ title: "Project saved!" });
-    navigate(`/project/${project.id}`);
   };
 
   const langCounts = files.reduce<Record<string, number>>((acc, f) => {

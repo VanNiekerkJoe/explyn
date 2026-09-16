@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Zap, Code2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Cpu, Code2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { useCredits } from "@/hooks/useCredits";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { supabase } from "@/integrations/supabase/client";
 import InteractiveCodeViewer from "@/components/InteractiveCodeViewer";
+import { streamAnalysis, streamCodeChat } from "@/lib/stream";
+import { isAIConfigured } from "@/lib/ai";
+import { useAuth } from "@/lib/auth";
+import { createSnippet } from "@/lib/localdb";
 import type { UploadedFile } from "./Upload";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -19,6 +21,7 @@ const MODE_LABELS = { explain: "Analysis Report", debug: "Debug Report", learn: 
 const Report = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [report, setReport] = useState("");
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -32,12 +35,10 @@ const Report = () => {
   const filesRef = useRef<UploadedFile[]>([]);
   const levelRef = useRef<string>("beginner");
   const modeRef = useRef<string>("explain");
-  const { hasCredits, useCredit, remaining, loading: creditsLoading } = useCredits();
-  const [creditGated, setCreditGated] = useState(false);
+  const [needsAI, setNeedsAI] = useState(false);
   const [showCode, setShowCode] = useState(false);
 
   useEffect(() => {
-    if (creditsLoading) return;
     const raw = sessionStorage.getItem("explyn_files");
     const level = sessionStorage.getItem("explyn_level") || "beginner";
     const mode = sessionStorage.getItem("explyn_mode") || "explain";
@@ -46,82 +47,28 @@ const Report = () => {
     filesRef.current = files;
     levelRef.current = level;
     modeRef.current = mode;
+    if (!isAIConfigured()) {
+      setNeedsAI(true);
+      setLoading(false);
+      return;
+    }
     analyzeCode(files, level, mode);
-  }, [creditsLoading]);
-
-  const streamSSE = async (url: string, body: any, onDelta: (text: string) => void) => {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `Request failed (${response.status})`);
-    }
-    if (!response.body) throw new Error("No response body");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let ni: number;
-      while ((ni = buffer.indexOf("\n")) !== -1) {
-        let line = buffer.slice(0, ni);
-        buffer = buffer.slice(ni + 1);
-        if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (!line.startsWith("data: ")) continue;
-        const js = line.slice(6).trim();
-        if (js === "[DONE]") return;
-        try {
-          const p = JSON.parse(js);
-          const c = p.choices?.[0]?.delta?.content;
-          if (c) onDelta(c);
-        } catch {
-          buffer = line + "\n" + buffer;
-          break;
-        }
-      }
-    }
-  };
+  }, []);
 
   const analyzeCode = async (files: UploadedFile[], level: string, mode: string) => {
     setLoading(true);
     setProgress(10);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session && !hasCredits) {
-      setCreditGated(true);
-      setLoading(false);
-      return;
-    }
-    if (session) {
-      const success = await useCredit(1, `${mode} analysis`);
-      if (!success) {
-        setCreditGated(true);
-        setLoading(false);
-        return;
-      }
-    }
     try {
       const filesSummary = files.map((f) => ({
         path: f.path, language: f.language, content: f.content.slice(0, 8000),
       }));
       setProgress(30);
       let fullReport = "";
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-code`,
-        { files: filesSummary, level, mode },
-        (chunk) => {
-          fullReport += chunk;
-          setReport(fullReport);
-          setProgress(Math.min(30 + (fullReport.length / 500) * 5, 95));
-        },
-      );
+      await streamAnalysis(filesSummary, level, mode, (chunk) => {
+        fullReport += chunk;
+        setReport(fullReport);
+        setProgress(Math.min(30 + (fullReport.length / 500) * 5, 95));
+      });
       setProgress(100);
     } catch (err: any) {
       toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
@@ -131,31 +78,30 @@ const Report = () => {
   };
 
   const saveSnippet = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast({ title: "Sign in to save", description: "Create an account to save snippets to your library." });
+    if (!user) {
+      toast({ title: "Create a local account to save", description: "Your library is stored in this browser." });
       navigate("/auth");
       return;
     }
     setSaving(true);
-    const firstFile = filesRef.current[0];
-    const title = firstFile?.path?.split("/").pop() || "Untitled snippet";
-    const { error } = await supabase.from("snippets").insert({
-      user_id: session.user.id,
-      title,
-      code: filesRef.current.map((f) => `// ${f.path}\n${f.content}`).join("\n\n"),
-      language: firstFile?.language || "Unknown",
-      explanation: report,
-      level: levelRef.current,
-      mode: modeRef.current,
-    });
-    if (error) {
-      toast({ title: "Error saving", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      const firstFile = filesRef.current[0];
+      createSnippet({
+        user_id: user.id,
+        title: firstFile?.path?.split("/").pop() || "Untitled snippet",
+        code: filesRef.current.map((f) => `// ${f.path}\n${f.content}`).join("\n\n"),
+        language: firstFile?.language || "Unknown",
+        explanation: report,
+        level: levelRef.current,
+        mode: modeRef.current,
+      });
       toast({ title: "Saved to library!" });
+    } catch (err: any) {
+      toast({ title: "Error saving", description: err.message, variant: "destructive" });
     }
     setSaving(false);
   };
+
 
   const sendChatMessage = async () => {
     if (!chatInput.trim() || chatLoading) return;
@@ -166,13 +112,10 @@ const Report = () => {
     const allMessages = [...chatMessages, userMsg];
     let assistantContent = "";
     try {
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-code`,
-        {
-          messages: allMessages,
-          codeContext: filesRef.current.map((f) => ({ path: f.path, content: f.content.slice(0, 4000) })),
-          level: levelRef.current,
-        },
+      await streamCodeChat(
+        allMessages,
+        filesRef.current.map((f) => ({ path: f.path, content: f.content.slice(0, 4000) })),
+        levelRef.current,
         (chunk) => {
           assistantContent += chunk;
           setChatMessages((prev) => {
@@ -254,14 +197,14 @@ const Report = () => {
               <span className="px-2 py-0.5 rounded-full border border-border text-[9px] sm:text-[10px] text-muted-foreground capitalize">{levelRef.current}</span>
             </div>
 
-            {creditGated && (
+            {needsAI && (
               <div className="glass-panel rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center mb-6 sm:mb-8">
-                <Zap className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-3 text-muted-foreground" />
-                <h3 className="font-semibold text-base sm:text-lg mb-2">Out of credits</h3>
+                <Cpu className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-semibold text-base sm:text-lg mb-2">Connect your AI first</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
-                  You've used all your credits this month. Upgrade your plan or wait for the reset.
+                  Explyn runs on an AI you choose. Add yours once and everything here works.
                 </p>
-                <button onClick={() => navigate("/pricing")} className="btn-primary text-sm">View plans</button>
+                <button onClick={() => navigate("/settings")} className="btn-primary text-sm">Open settings</button>
               </div>
             )}
 
