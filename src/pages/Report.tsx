@@ -112,13 +112,10 @@ const Report = () => {
     const allMessages = [...chatMessages, userMsg];
     let assistantContent = "";
     try {
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-code`,
-        {
-          messages: allMessages,
-          codeContext: filesRef.current.map((f) => ({ path: f.path, content: f.content.slice(0, 4000) })),
-          level: levelRef.current,
-        },
+      await streamCodeChat(
+        allMessages,
+        filesRef.current.map((f) => ({ path: f.path, content: f.content.slice(0, 4000) })),
+        levelRef.current,
         (chunk) => {
           assistantContent += chunk;
           setChatMessages((prev) => {
