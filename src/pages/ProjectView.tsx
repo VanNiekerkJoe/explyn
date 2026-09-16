@@ -1,44 +1,40 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Send, X, Loader2, StickyNote, Plus, Trash2, Map, FileCode, Save } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, MessageCircle, Send, X, Loader2, Plus, Trash2, FileCode } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { useCredits } from "@/hooks/useCredits";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import InteractiveCodeViewer from "@/components/InteractiveCodeViewer";
 import ProjectFileTree from "@/components/ProjectFileTree";
 import SystemMapView from "@/components/SystemMapView";
+import { streamAnalysis, streamCodeChat } from "@/lib/stream";
+import { useAuth } from "@/lib/auth";
+import {
+  appendProjectChat,
+  createNote,
+  deleteNote as removeNote,
+  getProject,
+  listNotes,
+  listProjectChat,
+  listProjectFiles,
+  setFileExplanation,
+  type Project,
+  type ProjectFile,
+  type ProjectNote,
+} from "@/lib/localdb";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
-
-interface ProjectFile {
-  id: string;
-  path: string;
-  content: string;
-  language: string;
-  explanation: string | null;
-}
-
-interface ProjectNote {
-  id: string;
-  file_path: string | null;
-  line_number: number | null;
-  content: string;
-  created_at: string;
-}
 
 const ProjectView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasCredits, useCredit } = useCredits();
+  const { user, loading: authLoading } = useAuth();
 
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [selectedPath, setSelectedPath] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"code" | "explanation" | "map" | "notes">("code");
@@ -53,90 +49,35 @@ const ProjectView = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!id) return;
-    loadProject();
-  }, [id]);
+    if (!id || authLoading) return;
+    if (!user) { navigate("/auth"); return; }
 
-  const loadProject = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { navigate("/auth"); return; }
+    const proj = getProject(id);
+    if (!proj) { navigate("/dashboard"); return; }
+    setProject(proj);
 
-    const [projRes, filesRes, chatRes, notesRes] = await Promise.all([
-      supabase.from("projects").select("*").eq("id", id).single(),
-      supabase.from("project_files").select("*").eq("project_id", id),
-      supabase.from("project_chat_history").select("*").eq("project_id", id).order("created_at"),
-      supabase.from("project_notes").select("*").eq("project_id", id).order("created_at", { ascending: false }),
-    ]);
-
-    if (!projRes.data) { navigate("/dashboard"); return; }
-    setProject(projRes.data);
-    if (filesRes.data) {
-      setFiles(filesRes.data);
-      if (filesRes.data.length > 0) setSelectedPath(filesRes.data[0].path);
-    }
-    if (chatRes.data) setChatMessages(chatRes.data.map((m: any) => ({ role: m.role, content: m.content })));
-    if (notesRes.data) setNotes(notesRes.data);
-  };
+    const projectFiles = listProjectFiles(id);
+    setFiles(projectFiles);
+    if (projectFiles.length > 0) setSelectedPath(projectFiles[0].path);
+    setChatMessages(listProjectChat(id).map((m) => ({ role: m.role, content: m.content })));
+    setNotes(listNotes(id));
+  }, [id, user, authLoading, navigate]);
 
   const selectedFile = files.find((f) => f.path === selectedPath);
 
-  const streamSSE = async (url: string, body: any, onDelta: (text: string) => void) => {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `Request failed (${response.status})`);
-    }
-    if (!response.body) throw new Error("No response body");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let ni: number;
-      while ((ni = buffer.indexOf("\n")) !== -1) {
-        let line = buffer.slice(0, ni);
-        buffer = buffer.slice(ni + 1);
-        if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (!line.startsWith("data: ")) continue;
-        const js = line.slice(6).trim();
-        if (js === "[DONE]") return;
-        try {
-          const p = JSON.parse(js);
-          const c = p.choices?.[0]?.delta?.content;
-          if (c) onDelta(c);
-        } catch {
-          buffer = line + "\n" + buffer;
-          break;
-        }
-      }
-    }
-  };
-
   const explainFile = async () => {
-    if (!selectedFile || !hasCredits) return;
+    if (!selectedFile) return;
     setExplainLoading(true);
-    const success = await useCredit(1, "File explanation");
-    if (!success) { setExplainLoading(false); return; }
-
     try {
       let explanation = "";
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-code`,
-        { files: [{ path: selectedFile.path, language: selectedFile.language, content: selectedFile.content.slice(0, 8000) }], level: "intermediate", mode: "explain" },
+      await streamAnalysis(
+        [{ path: selectedFile.path, language: selectedFile.language, content: selectedFile.content.slice(0, 8000) }],
+        "intermediate",
+        "explain",
         (chunk) => { explanation += chunk; },
       );
-      // Cache in DB
-      await supabase.from("project_files").update({ explanation }).eq("id", selectedFile.id);
-      setFiles((prev) => prev.map((f) => f.id === selectedFile.id ? { ...f, explanation } : f));
+      setFileExplanation(selectedFile.id, explanation);
+      setFiles((prev) => prev.map((f) => (f.id === selectedFile.id ? { ...f, explanation } : f)));
       setActiveTab("explanation");
     } catch (err: any) {
       toast({ title: "Explanation failed", description: err.message, variant: "destructive" });
@@ -146,31 +87,21 @@ const ProjectView = () => {
   };
 
   const sendChatMessage = async () => {
-    if (!chatInput.trim() || chatLoading) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!chatInput.trim() || chatLoading || !id) return;
 
     const userMsg: ChatMessage = { role: "user", content: chatInput };
     setChatMessages((prev) => [...prev, userMsg]);
     setChatInput("");
     setChatLoading(true);
-
-    // Save user message
-    await supabase.from("project_chat_history").insert({
-      project_id: id!, user_id: session.user.id, role: "user", content: userMsg.content,
-    });
+    appendProjectChat(id, "user", userMsg.content);
 
     const allMessages = [...chatMessages, userMsg];
     let assistantContent = "";
     try {
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-code`,
-        {
-          messages: allMessages,
-          codeContext: files.slice(0, 20).map((f) => ({ path: f.path, content: f.content.slice(0, 4000) })),
-          level: "intermediate",
-          projectId: id,
-        },
+      await streamCodeChat(
+        allMessages,
+        files.slice(0, 20).map((f) => ({ path: f.path, content: f.content.slice(0, 4000) })),
+        "intermediate",
         (chunk) => {
           assistantContent += chunk;
           setChatMessages((prev) => {
@@ -182,10 +113,7 @@ const ProjectView = () => {
           });
         },
       );
-      // Save assistant message
-      await supabase.from("project_chat_history").insert({
-        project_id: id!, user_id: session.user.id, role: "assistant", content: assistantContent,
-      });
+      appendProjectChat(id, "assistant", assistantContent);
     } catch (err: any) {
       toast({ title: "Chat error", description: err.message, variant: "destructive" });
     } finally {
@@ -193,21 +121,18 @@ const ProjectView = () => {
     }
   };
 
-  const addNote = async () => {
-    if (!newNote.trim()) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const { data, error } = await supabase.from("project_notes").insert({
-      project_id: id!, user_id: session.user.id, file_path: selectedPath || null, content: newNote,
-    }).select().single();
-    if (data) { setNotes((prev) => [data, ...prev]); setNewNote(""); }
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+  const addNote = () => {
+    if (!newNote.trim() || !user || !id) return;
+    const note = createNote(id, user.id, selectedPath || null, newNote);
+    setNotes((prev) => [note, ...prev]);
+    setNewNote("");
   };
 
-  const deleteNote = async (noteId: string) => {
-    await supabase.from("project_notes").delete().eq("id", noteId);
+  const deleteNote = (noteId: string) => {
+    removeNote(noteId);
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
   };
+
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
