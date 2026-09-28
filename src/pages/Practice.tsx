@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { streamSSE } from "@/lib/stream";
+import { streamLearn } from "@/lib/stream";
 import { toast } from "@/hooks/use-toast";
 
 type Level = "beginner" | "intermediate" | "advanced";
@@ -31,8 +31,7 @@ const Practice = () => {
     setSolution("");
     setLoadingChallenge(true);
     try {
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/learn-ai`,
+      await streamLearn(
         {
           mode: "challenge",
           messages: [{ role: "user", content: `Generate a ${level} ${language} challenge on ${topic}` }],
@@ -52,8 +51,7 @@ const Practice = () => {
     setFeedback("");
     setLoadingFeedback(true);
     try {
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/learn-ai`,
+      await streamLearn(
         {
           mode: "feedback",
           messages: [

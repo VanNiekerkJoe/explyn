@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getCourse, type CourseLesson } from "@/data/courses";
-import { streamSSE } from "@/lib/stream";
+import { streamLearn } from "@/lib/stream";
 import { toast } from "@/hooks/use-toast";
 
 type Level = "beginner" | "intermediate" | "advanced";
@@ -52,8 +52,7 @@ const Course = () => {
     setLesson("");
     setLoading(true);
     try {
-      await streamSSE(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/learn-ai`,
+      await streamLearn(
         {
           mode: "lesson",
           messages: [{ role: "user", content: `Teach me: ${l.topic}` }],
