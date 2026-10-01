@@ -27,8 +27,20 @@ const COMMANDS = [
   { name: "/model", desc: "Pick or set the AI model" },
   { name: "/skills", desc: "Toggle what the assistant focuses on" },
   { name: "/level", desc: "Set explanation level" },
+  { name: "/beginner", desc: "Explain like I'm new to coding" },
+  { name: "/intermediate", desc: "University-level explanations" },
+  { name: "/advanced", desc: "Architecture-level explanations" },
+  { name: "/explain", desc: "Focus on explaining code" },
+  { name: "/debug", desc: "Focus on finding bugs" },
+  { name: "/teach", desc: "Focus on tutoring" },
+  { name: "/review", desc: "Focus on code review" },
+  { name: "/refactor", desc: "Focus on refactoring" },
+  { name: "/tests", desc: "Focus on writing tests" },
+  { name: "/security", desc: "Focus on security risks" },
+  { name: "/status", desc: "Show current model, skills and level" },
   { name: "/clear", desc: "Clear the conversation" },
   { name: "/settings", desc: "Open AI provider settings" },
+  { name: "/exit", desc: "Back to the hub" },
   { name: "/help", desc: "Show all commands" },
 ];
 
@@ -115,19 +127,41 @@ const Console = () => {
     else if (picker === "level") { setLevel(id as Level); setPicker(null); sys(`Level set to ${id}`); }
   };
 
+  const setOnlySkill = (id: string) => {
+    setSkills([id]);
+    sys(`Skill set to ${SKILLS.find((s) => s.id === id)?.label ?? id} (others off)`);
+  };
+
   const runCommand = (raw: string) => {
     const [cmd, ...rest] = raw.trim().split(/\s+/);
     const arg = rest.join(" ");
-    switch (cmd.toLowerCase()) {
+    const c = cmd.toLowerCase();
+    if (c === "/beginner" || c === "/intermediate" || c === "/advanced") {
+      setLevel(c.slice(1) as Level);
+      sys(`Level set to ${c.slice(1)}`);
+      setInput("");
+      return;
+    }
+    const skillCmd = SKILLS.find((s) => c === `/${s.id}`);
+    if (skillCmd) {
+      setOnlySkill(skillCmd.id);
+      setInput("");
+      return;
+    }
+    switch (c) {
       case "/model": arg ? setActiveModel(arg) : openPicker("model"); break;
       case "/skills": openPicker("skills"); break;
       case "/level":
         if (["beginner", "intermediate", "advanced"].includes(arg)) { setLevel(arg as Level); sys(`Level set to ${arg}`); }
         else openPicker("level");
         break;
+      case "/status":
+        sys(`model:   ${model || "none"}\nlevel:   ${level}\nskills:  ${skills.length ? skills.join(", ") : "none"}`);
+        break;
       case "/clear": setLines([]); break;
       case "/settings": navigate("/settings"); break;
-      case "/help": sys(COMMANDS.map((c) => `${c.name.padEnd(10)} ${c.desc}`).join("\n")); break;
+      case "/exit": navigate("/"); break;
+      case "/help": sys(COMMANDS.map((cm) => `${cm.name.padEnd(14)} ${cm.desc}`).join("\n")); break;
       default: sys(`Unknown command ${cmd}. Type /help`);
     }
     setInput("");
@@ -221,7 +255,7 @@ const Console = () => {
  |___|/_/\\_\\|_| |____||_|  |_|\\_|.`}</pre>
             <div className="text-muted-foreground space-y-1 text-xs">
               {COMMANDS.map((c) => (
-                <div key={c.name}><span className="text-foreground">{c.name.padEnd(10)}</span> {c.desc}</div>
+                <div key={c.name}><span className="text-foreground">{c.name.padEnd(14)}</span> {c.desc}</div>
               ))}
             </div>
           </div>
