@@ -68,6 +68,7 @@ const modes = [
 
 const Upload = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [pasteCode, setPasteCode] = useState("");

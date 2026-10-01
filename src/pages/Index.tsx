@@ -7,6 +7,15 @@ import IntroSplash, { shouldShowIntro } from "@/components/IntroSplash";
 
 const hubCards = [
   {
+    id: "console",
+    icon: Code2,
+    title: "Explyn Console",
+    desc: "A terminal-style AI chat. Type /model to switch models, /skills to choose focus, /level to set depth.",
+    cta: "Open console",
+    route: "/console",
+    accent: "from-slate-500/15 to-transparent",
+  },
+  {
     id: "courses",
     icon: BookOpen,
     title: "Courses",
