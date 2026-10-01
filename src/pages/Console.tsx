@@ -255,7 +255,7 @@ const Console = () => {
  |___|/_/\\_\\|_| |____||_|  |_|\\_|.`}</pre>
             <div className="text-muted-foreground space-y-1 text-xs">
               {COMMANDS.map((c) => (
-                <div key={c.name}><span className="text-foreground">{c.name.padEnd(10)}</span> {c.desc}</div>
+                <div key={c.name}><span className="text-foreground">{c.name.padEnd(14)}</span> {c.desc}</div>
               ))}
             </div>
           </div>
