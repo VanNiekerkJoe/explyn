@@ -127,19 +127,41 @@ const Console = () => {
     else if (picker === "level") { setLevel(id as Level); setPicker(null); sys(`Level set to ${id}`); }
   };
 
+  const setOnlySkill = (id: string) => {
+    setSkills([id]);
+    sys(`Skill set to ${SKILLS.find((s) => s.id === id)?.label ?? id} (others off)`);
+  };
+
   const runCommand = (raw: string) => {
     const [cmd, ...rest] = raw.trim().split(/\s+/);
     const arg = rest.join(" ");
-    switch (cmd.toLowerCase()) {
+    const c = cmd.toLowerCase();
+    if (c === "/beginner" || c === "/intermediate" || c === "/advanced") {
+      setLevel(c.slice(1) as Level);
+      sys(`Level set to ${c.slice(1)}`);
+      setInput("");
+      return;
+    }
+    const skillCmd = SKILLS.find((s) => c === `/${s.id}`);
+    if (skillCmd) {
+      setOnlySkill(skillCmd.id);
+      setInput("");
+      return;
+    }
+    switch (c) {
       case "/model": arg ? setActiveModel(arg) : openPicker("model"); break;
       case "/skills": openPicker("skills"); break;
       case "/level":
         if (["beginner", "intermediate", "advanced"].includes(arg)) { setLevel(arg as Level); sys(`Level set to ${arg}`); }
         else openPicker("level");
         break;
+      case "/status":
+        sys(`model:   ${model || "none"}\nlevel:   ${level}\nskills:  ${skills.length ? skills.join(", ") : "none"}`);
+        break;
       case "/clear": setLines([]); break;
       case "/settings": navigate("/settings"); break;
-      case "/help": sys(COMMANDS.map((c) => `${c.name.padEnd(10)} ${c.desc}`).join("\n")); break;
+      case "/exit": navigate("/"); break;
+      case "/help": sys(COMMANDS.map((cm) => `${cm.name.padEnd(14)} ${cm.desc}`).join("\n")); break;
       default: sys(`Unknown command ${cmd}. Type /help`);
     }
     setInput("");
