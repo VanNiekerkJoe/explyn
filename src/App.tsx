@@ -18,6 +18,8 @@ import Tutor from "./pages/Tutor";
 import Courses from "./pages/Courses";
 import Course from "./pages/Course";
 import NotFound from "./pages/NotFound";
+import Console from "./pages/Console";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,8 @@ const App = () => (
           <Route path="/tutor" element={<Tutor />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:id" element={<Course />} />
+          <Route path="/console" element={<Console />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
