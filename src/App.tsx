@@ -11,7 +11,6 @@ import Dashboard from "./pages/Dashboard";
 import SnippetView from "./pages/SnippetView";
 import ProjectView from "./pages/ProjectView";
 import ShareView from "./pages/ShareView";
-import Pricing from "./pages/Pricing";
 import Learn from "./pages/Learn";
 import Practice from "./pages/Practice";
 import Tutor from "./pages/Tutor";
@@ -38,7 +37,6 @@ const App = () => (
           <Route path="/snippet/:id" element={<SnippetView />} />
           <Route path="/project/:id" element={<ProjectView />} />
           <Route path="/share/:slug" element={<ShareView />} />
-          <Route path="/pricing" element={<Pricing />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/practice" element={<Practice />} />
           <Route path="/tutor" element={<Tutor />} />
