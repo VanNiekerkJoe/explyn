@@ -1,214 +1,247 @@
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Code2, GraduationCap, Dumbbell, MessageCircle, Sparkles, BookOpen } from "lucide-react";
-import { COURSES } from "@/data/courses";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
-import IntroSplash, { shouldShowIntro } from "@/components/IntroSplash";
+import {
+  ArrowRight,
+  BookOpen,
+  Braces,
+  ChevronRight,
+  CircleUserRound,
+  Code2,
+  FolderKanban,
+  Github,
+  GraduationCap,
+  MessageSquareText,
+  Settings,
+  TerminalSquare,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
+import { getAIConfig, isAIConfigured } from "@/lib/ai";
 
-const hubCards = [
-  {
-    id: "console",
-    icon: Code2,
-    title: "Explyn Console",
-    desc: "A terminal-style AI chat. Type /model to switch models, /skills to choose focus, /level to set depth.",
-    cta: "Open console",
-    route: "/console",
-    accent: "from-slate-500/15 to-transparent",
-  },
-  {
-    id: "courses",
-    icon: BookOpen,
-    title: "Courses",
-    desc: "Structured, multi-lesson courses across Python, JavaScript, TypeScript, SQL, Web, and more — taught at your level.",
-    cta: "Browse courses",
-    route: "/courses",
-    accent: "from-pink-500/15 to-transparent",
-  },
-  {
-    id: "analyse",
-    icon: Code2,
-    title: "Analyse my code",
-    desc: "Upload a file, snippet, or whole project. Get a structured breakdown of every class, function, and pattern.",
-    cta: "Upload code",
-    route: "/upload",
-    accent: "from-blue-500/15 to-transparent",
-  },
-  {
-    id: "learn",
-    icon: GraduationCap,
-    title: "Teach me a topic",
-    desc: "Want a one-off lesson? Type any topic and get a structured walkthrough with examples and practice.",
-    cta: "Start a lesson",
-    route: "/learn",
-    accent: "from-emerald-500/15 to-transparent",
-  },
-  {
-    id: "practice",
-    icon: Dumbbell,
-    title: "Practice challenges",
-    desc: "Bite-sized coding challenges with hints. Submit your solution, get instant AI feedback.",
-    cta: "Try a challenge",
-    route: "/practice",
-    accent: "from-orange-500/15 to-transparent",
-  },
-  {
-    id: "tutor",
-    icon: MessageCircle,
-    title: "Ask a tutor",
-    desc: "Stuck on something? Chat with an AI tutor that explains concepts at your level — beginner to advanced.",
-    cta: "Open chat",
-    route: "/tutor",
-    accent: "from-purple-500/15 to-transparent",
-  },
+const quickCommands = [
+  { command: "/console", label: "Open the AI console", route: "/console" },
+  { command: "/analyze", label: "Analyze a file or codebase", route: "/upload" },
+  { command: "/courses", label: "Browse coding courses", route: "/courses" },
+  { command: "/learn", label: "Start a focused lesson", route: "/learn" },
+  { command: "/practice", label: "Solve a coding challenge", route: "/practice" },
+  { command: "/tutor", label: "Ask the AI tutor", route: "/tutor" },
+  { command: "/projects", label: "Open saved work", route: "/dashboard" },
+  { command: "/settings", label: "Connect or change your AI", route: "/settings" },
 ];
 
 const Index = () => {
   const navigate = useNavigate();
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
-  const [introDone, setIntroDone] = useState(!shouldShowIntro());
+  const { user } = useAuth();
+  const commandRef = useRef<HTMLInputElement>(null);
+  const [command, setCommand] = useState("");
+  const [aiConnected, setAiConnected] = useState(() => isAIConfigured());
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setLoggedIn(!!session);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setLoggedIn(!!session);
-    });
-    return () => subscription.unsubscribe();
+    const syncAI = () => setAiConnected(isAIConfigured());
+    const focusCommand = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        commandRef.current?.focus();
+      }
+    };
+    window.addEventListener("explyn:ai-config-changed", syncAI);
+    window.addEventListener("storage", syncAI);
+    window.addEventListener("keydown", focusCommand);
+    return () => {
+      window.removeEventListener("explyn:ai-config-changed", syncAI);
+      window.removeEventListener("storage", syncAI);
+      window.removeEventListener("keydown", focusCommand);
+    };
   }, []);
 
+  const matches = useMemo(() => {
+    const value = command.trim().toLowerCase();
+    if (!value) return [];
+    return quickCommands.filter(
+      (item) => item.command.includes(value) || item.label.toLowerCase().includes(value),
+    ).slice(0, 4);
+  }, [command]);
+
+  const runCommand = (event: FormEvent) => {
+    event.preventDefault();
+    const value = command.trim().toLowerCase();
+    const exact = quickCommands.find((item) => item.command === value);
+    const destination = exact ?? matches[0];
+    navigate(destination?.route ?? `/console${command.trim() ? `?prompt=${encodeURIComponent(command.trim())}` : ""}`);
+  };
+
+  const model = aiConnected ? getAIConfig().model : "not connected";
+
   return (
-    <div className="relative min-h-screen bg-background overflow-hidden">
-      {showIntro && !introDone && (
-        <IntroSplash onComplete={() => {
-          setShowIntro(false);
-          setIntroDone(true);
-        }} />
-      )}
-      <div className="noise" aria-hidden="true" />
-      <div className="bg-orb orb-1" aria-hidden="true" />
-      <div className="bg-orb orb-2" aria-hidden="true" />
-      <div className="bg-orb orb-3" aria-hidden="true" />
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="pointer-events-none fixed inset-0 opacity-[0.045] [background-image:linear-gradient(hsl(var(--border))_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border))_1px,transparent_1px)] [background-size:28px_28px]" />
 
-      <div className="relative z-10">
-        <nav className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-            <span className="text-base font-bold tracking-tight">
-              Explyn<span className="text-muted-foreground">.</span>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+        <header className="flex min-h-14 items-center justify-between border-b border-border pb-4">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="font-mono text-lg font-bold text-foreground sm:text-xl"
+              aria-label="Explyn home"
+            >
+              Explyn.
+            </button>
+            <span className="hidden rounded-sm border border-border px-2 py-1 font-mono text-[10px] uppercase text-muted-foreground sm:inline-flex">
+              open source / local first
             </span>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button onClick={() => navigate("/pricing")} className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
-                Pricing
-              </button>
-              {loggedIn ? (
-                <button onClick={() => navigate("/dashboard")} className="px-2.5 sm:px-3 py-1.5 rounded-full border border-border text-[11px] sm:text-xs font-medium hover:bg-foreground hover:text-background transition-all">
-                  Dashboard
-                </button>
-              ) : (
-                <button onClick={() => navigate("/auth")} className="px-2.5 sm:px-3 py-1.5 rounded-full border border-border text-[11px] sm:text-xs font-medium hover:bg-foreground hover:text-background transition-all">
-                  Sign in
-                </button>
-              )}
+          </div>
+
+          <div className="flex items-center gap-1 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              className="hidden items-center gap-2 px-2 py-2 font-mono text-[10px] uppercase text-muted-foreground transition-colors hover:text-foreground sm:flex"
+            >
+              <span className={`h-1.5 w-1.5 ${aiConnected ? "bg-foreground" : "border border-muted-foreground"}`} />
+              AI {aiConnected ? "connected" : "offline"}
+            </button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} aria-label="AI settings">
+              <Settings />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate(user ? "/dashboard" : "/auth")} aria-label={user ? "Open workspace" : "Open local account"}>
+              <CircleUserRound />
+            </Button>
+          </div>
+        </header>
+
+        <main className="flex flex-1 flex-col justify-center py-8 sm:py-12">
+          <section className="mb-7 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <p className="mb-3 font-mono text-[10px] uppercase text-muted-foreground">// your code. your model. your machine.</p>
+              <h1 className="max-w-3xl font-mono text-3xl font-bold leading-tight sm:text-5xl">
+                The open-source classroom for understanding code.
+              </h1>
             </div>
-          </div>
-        </nav>
-
-        {/* Hero */}
-        <section className="pt-24 sm:pt-32 pb-10 sm:pb-14 px-4 sm:px-6">
-          <div className="max-w-5xl mx-auto">
-            <div className="animate-fade-in-up flex items-center gap-2 mb-5">
-              <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="eyebrow">Explyn / Learning Hub</p>
+            <div className="hidden font-mono text-[10px] leading-5 text-muted-foreground lg:block" aria-hidden="true">
+              ┌─ LOCAL WORKSPACE ─────┐<br />
+              │ data stays here&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br />
+              │ model belongs to you │<br />
+              └───────────────────────┘
             </div>
-            <h1 className="animate-fade-in-up text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] max-w-3xl">
-              Learn to code,{" "}
-              <span className="text-muted-foreground">your way.</span>
-            </h1>
-            <p className="animate-fade-in-up-delay-1 text-base sm:text-lg text-muted-foreground max-w-xl mt-5 leading-relaxed">
-              A hub for students. Analyse real code, follow guided lessons, practice with challenges,
-              or just ask a tutor anything — at your level.
-            </p>
-          </div>
-        </section>
+          </section>
 
-        {/* Hub grid */}
-        <section className="pb-16 sm:pb-24 px-4 sm:px-6">
-          <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {hubCards.map((card, i) => {
-              const Icon = card.icon;
-              return (
-                <button
-                  key={card.id}
-                  onClick={() => navigate(card.route)}
-                  style={{ animationDelay: `${i * 80}ms` }}
-                  className={`animate-fade-in-up group relative overflow-hidden glass-panel rounded-2xl p-6 sm:p-8 text-left hover-lift transition-all`}
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none`} />
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-xl border border-border bg-background/60 flex items-center justify-center mb-5">
-                      <Icon className="h-4.5 w-4.5" strokeWidth={1.6} />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-semibold tracking-tight mb-2">
-                      {card.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                      {card.desc}
-                    </p>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground/80 group-hover:text-foreground transition-colors">
-                      {card.cta}
-                      <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Featured courses */}
-        <section className="pb-16 sm:pb-24 px-4 sm:px-6">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex items-end justify-between mb-5 sm:mb-6">
-              <div>
-                <p className="eyebrow mb-1.5">Classroom in a box</p>
-                <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Featured courses</h2>
+          <form onSubmit={runCommand} className="relative z-20 mb-4">
+            <label htmlFor="home-command" className="sr-only">Run a command</label>
+            <div className="flex min-h-14 items-center border border-border bg-card transition-colors focus-within:border-foreground/50">
+              <span className="pl-4 font-mono text-muted-foreground" aria-hidden="true">›</span>
+              <input
+                ref={commandRef}
+                id="home-command"
+                value={command}
+                onChange={(event) => setCommand(event.target.value)}
+                placeholder="Type /console, /analyze, /learn or ask anything…"
+                className="h-14 min-w-0 flex-1 bg-transparent px-3 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground sm:text-sm"
+              />
+              <kbd className="mr-3 hidden border border-border px-2 py-1 font-mono text-[9px] text-muted-foreground sm:block">CTRL K</kbd>
+              <Button type="submit" size="icon" className="mr-2 h-10 w-10" aria-label="Run command">
+                <ArrowRight />
+              </Button>
+            </div>
+            {matches.length > 0 && (
+              <div className="absolute inset-x-0 top-[calc(100%+4px)] border border-border bg-popover p-1 shadow-2xl">
+                {matches.map((item) => (
+                  <button
+                    type="button"
+                    key={item.command}
+                    onClick={() => navigate(item.route)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent"
+                  >
+                    <span className="font-mono text-xs text-foreground">{item.command}</span>
+                    <span className="text-xs text-muted-foreground">{item.label}</span>
+                  </button>
+                ))}
               </div>
-              <button onClick={() => navigate("/courses")} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-                View all <ArrowRight className="h-3 w-3" />
+            )}
+          </form>
+
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-12" aria-label="Workspace tools">
+            <div className="grid grid-cols-2 gap-4 md:col-span-7">
+              <button
+                type="button"
+                onClick={() => navigate("/console")}
+                className="group col-span-2 min-h-52 border border-border bg-card/60 p-5 text-left transition-colors hover:bg-accent sm:p-6"
+              >
+                <div className="mb-8 flex items-start justify-between">
+                  <span className="flex h-10 w-10 items-center justify-center border border-border bg-background">
+                    <TerminalSquare className="h-5 w-5" />
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">/console</span>
+                </div>
+                <h2 className="mb-2 font-mono text-lg font-bold">OpenCode Console</h2>
+                <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+                  Talk to your own AI with slash commands for models, skill modes, explanation depth, debugging, tests, and refactors.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2 font-mono text-[9px] text-muted-foreground">
+                  <span className="border border-border px-2 py-1">/model</span>
+                  <span className="border border-border px-2 py-1">/skills</span>
+                  <span className="border border-border px-2 py-1">/beginner</span>
+                </div>
+              </button>
+
+              <button type="button" onClick={() => navigate("/upload")} className="group min-h-40 border border-border bg-card/60 p-4 text-left transition-colors hover:bg-accent sm:p-5">
+                <Braces className="mb-7 h-5 w-5 text-muted-foreground group-hover:text-foreground" />
+                <h2 className="mb-1 font-mono text-sm font-bold">Analyze code</h2>
+                <p className="text-xs leading-relaxed text-muted-foreground">Import files or a public repository. Build a code tree and inspect each expression.</p>
+              </button>
+
+              <button type="button" onClick={() => navigate(user ? "/dashboard" : "/auth")} className="group min-h-40 border border-border bg-card/60 p-4 text-left transition-colors hover:bg-accent sm:p-5">
+                <FolderKanban className="mb-7 h-5 w-5 text-muted-foreground group-hover:text-foreground" />
+                <h2 className="mb-1 font-mono text-sm font-bold">Local workspace</h2>
+                <p className="text-xs leading-relaxed text-muted-foreground">Projects, snippets, notes, and history saved only inside your browser.</p>
               </button>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {COURSES.slice(0, 6).map((c, i) => (
-                <button
-                  key={c.id}
-                  onClick={() => navigate(`/courses/${c.id}`)}
-                  style={{ animationDelay: `${i * 50}ms` }}
-                  className="animate-fade-in-up group relative overflow-hidden glass-panel rounded-2xl p-4 sm:p-5 text-left hover-lift transition-all"
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${c.color} opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none`} />
-                  <div className="relative">
-                    <div className="text-2xl mb-3">{c.emoji}</div>
-                    <p className="eyebrow mb-1 text-[10px]">{c.language} · {c.level}</p>
-                    <h3 className="text-sm sm:text-base font-semibold tracking-tight mb-1 leading-tight">{c.title}</h3>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground leading-snug line-clamp-2">{c.tagline}</p>
-                    <p className="text-[10px] text-muted-foreground mt-3">{c.lessons.length} lessons</p>
-                  </div>
-                </button>
-              ))}
+
+            <div className="flex flex-col gap-4 md:col-span-5">
+              <div className="flex-1 border border-border bg-card/60 p-5 sm:p-6">
+                <div className="mb-5 flex items-center justify-between">
+                  <h2 className="font-mono text-[10px] font-bold uppercase text-muted-foreground">Learning system</h2>
+                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="divide-y divide-border border-y border-border">
+                  {[
+                    ["01", "Coding courses", "/courses", BookOpen],
+                    ["02", "Topic lab", "/learn", Code2],
+                    ["03", "Practice mode", "/practice", Braces],
+                  ].map(([number, label, route, Icon]) => (
+                    <button key={String(route)} type="button" onClick={() => navigate(String(route))} className="group flex w-full items-center gap-3 py-4 text-left">
+                      <span className="font-mono text-[10px] text-muted-foreground">{String(number)}</span>
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="flex-1 text-sm font-medium">{String(label)}</span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button type="button" onClick={() => navigate("/tutor")} className="group flex min-h-28 items-center gap-4 border border-border bg-card/60 p-5 text-left transition-colors hover:bg-accent">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center border border-border bg-background">
+                  <MessageSquareText className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="mb-1 block font-mono text-sm font-bold">Ask tutor</span>
+                  <span className="block text-xs leading-relaxed text-muted-foreground">A patient, context-aware guide that teaches at your level.</span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+              </button>
             </div>
-          </div>
-        </section>
+          </section>
+        </main>
 
-
-        {/* Footer */}
-        <footer className="border-t border-border/30 py-8 px-6">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground tracking-tight">
-              Explyn<span className="text-muted-foreground">.</span>
-            </span>
-            <span>Learn code. Understand code. Write better code.</span>
+        <footer className="flex flex-col gap-3 border-t border-border py-4 font-mono text-[10px] uppercase text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="inline-flex items-center gap-1.5"><Github className="h-3 w-3" /> open source</span>
+            <span>browser storage</span>
+            <span>bring your own AI</span>
           </div>
+          <button type="button" onClick={() => navigate("/settings")} className="text-left transition-colors hover:text-foreground sm:text-right">
+            model: {model}
+          </button>
         </footer>
       </div>
     </div>
