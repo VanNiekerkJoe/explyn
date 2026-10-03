@@ -4,8 +4,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getAIConfig, saveAIConfig, streamChat, AI_PRESETS, type ChatMessage } from "@/lib/ai";
+import ActivityStatus from "@/components/ActivityStatus";
+import ExplynMascot from "@/components/ExplynMascot";
 
 type Level = "beginner" | "intermediate" | "advanced";
 type Line =
@@ -248,16 +250,19 @@ const Console = () => {
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 space-y-5 text-sm">
         {lines.length === 0 && (
-          <div className="py-10 space-y-4">
-            <pre className="text-foreground text-xs sm:text-sm leading-tight">{`  ___ __  __ ___ _  __   __ _  _
+          <div className="grid py-10 gap-8 sm:grid-cols-[1fr_180px] sm:items-start">
+            <div className="space-y-4">
+              <pre className="text-foreground text-xs sm:text-sm leading-tight">{`  ___ __  __ ___ _  __   __ _  _
  | __|\\ \\/ /| _ \\ | \\ \\ / /| \\| |
  | _|  >  < |  _/ |__\\ V / | .\` |
  |___|/_/\\_\\|_| |____||_|  |_|\\_|.`}</pre>
-            <div className="text-muted-foreground space-y-1 text-xs">
-              {COMMANDS.map((c) => (
-                <div key={c.name}><span className="text-foreground">{c.name.padEnd(14)}</span> {c.desc}</div>
-              ))}
+              <div className="text-muted-foreground space-y-1 text-xs">
+                {COMMANDS.map((c) => (
+                  <div key={c.name}><span className="text-foreground">{c.name.padEnd(14)}</span> {c.desc}</div>
+                ))}
+              </div>
             </div>
+            <ExplynMascot className="mx-auto hidden h-44 w-44 sm:block" />
           </div>
         )}
         {lines.map((l, i) =>
@@ -272,7 +277,7 @@ const Console = () => {
           ),
         )}
         {loading && lines[lines.length - 1]?.kind === "user" && (
-          <div className="pl-3 text-muted-foreground text-xs inline-flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> thinking…</div>
+          <ActivityStatus showMascot compact className="pl-3" />
         )}
         <div ref={endRef} />
       </main>
