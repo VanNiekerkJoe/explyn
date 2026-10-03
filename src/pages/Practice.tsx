@@ -7,6 +7,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { streamLearn } from "@/lib/stream";
 import { toast } from "@/hooks/use-toast";
+import ActivityStatus from "@/components/ActivityStatus";
 
 type Level = "beginner" | "intermediate" | "advanced";
 
@@ -143,9 +144,10 @@ const Practice = () => {
 
           {(challenge || loadingChallenge) && (
             <article className="glass-panel rounded-2xl p-6 sm:p-8">
+              {loadingChallenge && !challenge && <ActivityStatus showMascot words={["CONTEMPLATING", "ASSEMBLING", "TESTING", "CHALLENGING"]} className="mb-4" />}
               <div className="prose prose-invert prose-sm sm:prose-base max-w-none prose-h2:text-lg prose-h3:text-base prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                  {challenge || "_Generating challenge…_"}
+                  {challenge || ""}
                 </ReactMarkdown>
               </div>
             </article>
@@ -178,10 +180,10 @@ const Practice = () => {
 
           {(feedback || loadingFeedback) && (
             <article className="glass-panel rounded-2xl p-6 sm:p-8">
-              <p className="eyebrow mb-3">Feedback</p>
+              {loadingFeedback && !feedback ? <ActivityStatus showMascot words={["TESTING", "TRACKING", "REVIEWING", "REFINING"]} className="mb-3" /> : <p className="eyebrow mb-3">Feedback</p>}
               <div className="prose prose-invert prose-sm sm:prose-base max-w-none prose-h2:text-lg prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                  {feedback || "_Reviewing…_"}
+                  {feedback || ""}
                 </ReactMarkdown>
               </div>
             </article>

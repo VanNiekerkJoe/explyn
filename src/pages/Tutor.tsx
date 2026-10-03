@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Loader2, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { streamLearn } from "@/lib/stream";
 import { toast } from "@/hooks/use-toast";
+import ActivityStatus from "@/components/ActivityStatus";
+import ExplynMascot from "@/components/ExplynMascot";
 
 type Level = "beginner" | "intermediate" | "advanced";
 type Msg = { role: "user" | "assistant"; content: string };
@@ -103,9 +105,7 @@ const Tutor = () => {
         <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-10">
-              <div className="w-12 h-12 rounded-2xl border border-border bg-background/60 flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="h-5 w-5" strokeWidth={1.6} />
-              </div>
+              <ExplynMascot className="mx-auto mb-1 h-32 w-32" />
               <h2 className="text-xl font-semibold mb-2">Ask anything about code</h2>
               <p className="text-sm text-muted-foreground mb-6">A patient AI tutor that explains at your level.</p>
               <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
@@ -135,8 +135,8 @@ const Tutor = () => {
           ))}
           {loading && messages[messages.length - 1]?.role === "user" && (
             <div className="flex justify-start">
-              <div className="glass-panel rounded-2xl px-4 py-3 inline-flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
+              <div className="glass-panel rounded-lg px-3 py-2">
+                <ActivityStatus compact showMascot />
               </div>
             </div>
           )}

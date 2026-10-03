@@ -15,6 +15,7 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ExplynMascot from "@/components/ExplynMascot";
 import { useAuth } from "@/lib/auth";
 import { getAIConfig, isAIConfigured } from "@/lib/ai";
 
@@ -111,18 +112,18 @@ const Index = () => {
         </header>
 
         <main className="flex flex-1 flex-col justify-center py-8 sm:py-12">
-          <section className="mb-7 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <section className="mb-7 grid gap-4 md:grid-cols-[1fr_190px] md:items-end lg:grid-cols-[1fr_250px]">
             <div>
               <p className="mb-3 font-mono text-[10px] uppercase text-muted-foreground">// your code. your model. your machine.</p>
               <h1 className="max-w-3xl font-mono text-3xl font-bold leading-tight sm:text-5xl">
                 The open-source classroom for understanding code.
               </h1>
             </div>
-            <div className="hidden font-mono text-[10px] leading-5 text-muted-foreground lg:block" aria-hidden="true">
-              ┌─ LOCAL WORKSPACE ─────┐<br />
-              │ data stays here&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br />
-              │ model belongs to you │<br />
-              └───────────────────────┘
+            <div className="relative mx-auto h-36 w-36 md:mx-0 md:ml-auto md:h-44 md:w-44 lg:h-52 lg:w-52">
+              <ExplynMascot className="h-full w-full" />
+              <span className="absolute bottom-1 right-0 border border-border bg-background px-2 py-1 font-mono text-[8px] uppercase text-muted-foreground">
+                explyn_unit / online
+              </span>
             </div>
           </section>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Loader2, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Cpu, Code2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, ChevronDown, ChevronRight, Send, X, Save, BookOpen, Cpu, Code2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { isAIConfigured } from "@/lib/ai";
 import { useAuth } from "@/lib/auth";
 import { createSnippet } from "@/lib/localdb";
 import type { UploadedFile } from "./Upload";
+import ActivityStatus from "@/components/ActivityStatus";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -211,10 +212,10 @@ const Report = () => {
             {loading && (
               <div className="glass-panel rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
                 <div className="flex items-center gap-3 mb-3">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-xs sm:text-sm text-muted-foreground">
-                    {modeRef.current === "debug" ? "Scanning for bugs…" : modeRef.current === "learn" ? "Creating lesson…" : "Analysing your code…"}
-                  </span>
+                  <ActivityStatus
+                    showMascot
+                    words={modeRef.current === "debug" ? ["TRACKING", "TESTING", "ISOLATING", "PATCHING"] : modeRef.current === "learn" ? ["ABSORBING", "CONNECTING", "TEACHING", "CLARIFYING"] : undefined}
+                  />
                 </div>
                 <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-foreground rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
