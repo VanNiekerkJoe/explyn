@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, GraduationCap, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { streamLearn } from "@/lib/stream";
 import { toast } from "@/hooks/use-toast";
+import ActivityStatus from "@/components/ActivityStatus";
 
 type Level = "beginner" | "intermediate" | "advanced";
 
@@ -179,11 +180,11 @@ const Learn = () => {
                     <p className="eyebrow">{language} · {level}</p>
                     <h2 className="text-lg font-semibold mt-1">{topic}</h2>
                   </div>
-                  {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {loading && <ActivityStatus compact words={["ABSORBING", "CONNECTING", "TEACHING", "CLARIFYING"]} />}
                 </div>
                 <div className="prose prose-invert prose-sm sm:prose-base max-w-none prose-headings:tracking-tight prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-6 prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                    {lesson || "_Generating lesson…_"}
+                    {lesson || ""}
                   </ReactMarkdown>
                 </div>
               </article>

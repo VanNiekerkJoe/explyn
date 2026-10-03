@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, CheckCircle2, Circle, Clock, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, Circle, Clock, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -8,6 +8,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { getCourse, type CourseLesson } from "@/data/courses";
 import { streamLearn } from "@/lib/stream";
 import { toast } from "@/hooks/use-toast";
+import ActivityStatus from "@/components/ActivityStatus";
 
 type Level = "beginner" | "intermediate" | "advanced";
 
@@ -208,11 +209,11 @@ const Course = () => {
                     <p className="eyebrow">{course.language} · {level}</p>
                     <h2 className="text-lg font-semibold mt-1 truncate">{activeLesson.title}</h2>
                   </div>
-                  {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
+                  {loading && <ActivityStatus compact words={["ABSORBING", "OUTLINING", "TEACHING", "CONNECTING"]} />}
                 </div>
                 <div className="prose prose-invert prose-sm sm:prose-base max-w-none prose-headings:tracking-tight prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-6 prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                    {lesson || "_Generating lesson…_"}
+                    {lesson || ""}
                   </ReactMarkdown>
                 </div>
 

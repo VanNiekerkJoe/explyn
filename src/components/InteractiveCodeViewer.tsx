@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { X, Loader2, Lightbulb, Zap, HelpCircle, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import ActivityStatus from "@/components/ActivityStatus";
 
 interface ExplainPopupData {
   whatThisIs: string;
@@ -240,8 +241,7 @@ const InteractiveCodeViewer = ({ code, language, fileName, level, onAskFollowUp 
 
             {loading ? (
               <div className="flex items-center gap-2 px-4 py-6 justify-center">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">Analyzing expression…</span>
+                <ActivityStatus compact words={["TRACKING", "PARSING", "ABSORBING", "EXPLAINING"]} />
               </div>
             ) : explanation ? (
               <ScrollArea className={expanded ? "h-[70vh]" : "h-[40vh] sm:h-[45vh]"}>
