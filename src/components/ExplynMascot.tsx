@@ -1,4 +1,4 @@
-import mascotAsset from "@/assets/explyn-mascot.png.asset.json";
+import mascotUrl from "@/assets/explyn-mascot.webp";
 
 interface ExplynMascotProps {
   className?: string;
@@ -8,7 +8,7 @@ interface ExplynMascotProps {
 const ExplynMascot = ({ className = "", active = false }: ExplynMascotProps) => (
   <div className={`mascot-stage ${active ? "mascot-stage-active" : ""} ${className}`} aria-hidden="true">
     <span className="mascot-scanline" />
-    <img src={mascotAsset.url} alt="" className="mascot-image" draggable={false} />
+    <img src={mascotUrl} alt="" className="mascot-image" draggable={false} />
     <span className="mascot-pixel mascot-pixel-one">+</span>
     <span className="mascot-pixel mascot-pixel-two">·</span>
     <span className="mascot-pixel mascot-pixel-three">01</span>
