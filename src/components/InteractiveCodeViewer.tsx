@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, Loader2, Lightbulb, Zap, HelpCircle, ChevronDown } from "lucide-react";
+import { X, Lightbulb, Zap, HelpCircle, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ActivityStatus from "@/components/ActivityStatus";
 
