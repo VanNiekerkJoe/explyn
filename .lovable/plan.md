@@ -1,26 +1,32 @@
+# Local Sessions, Memory, and Skills
 
+## What will be built
 
-## Fix: Credit Gate Shows Before Credits Load
+- A session rail in the Explyn. console with a new-session action and browser-saved conversations.
+- A dedicated URL for every session so refreshing or sharing the local route restores the same conversation.
+- Session search plus rename, duplicate, Markdown export, and delete actions.
+- A skills workspace containing Explyn.'s built-in coding modes and user-created instruction sets.
+- Per-session skill activation, explanation level, and model selection so each conversation keeps its own working context.
+- New slash commands for session and skill management while preserving the existing command workflow.
 
-### Problem
+## Experience
 
-Race condition in `Report.tsx`: the `analyzeCode` function runs on mount via `useEffect`, but `useCredits()` hasn't finished fetching yet. Since `credits` is `null` initially, `hasCredits` defaults to `false`, so every authenticated user immediately hits the "Out of credits" gate.
+- Desktop uses a compact collapsible session rail beside the transcript.
+- Phone uses a slide-over session drawer, keeping the conversation and composer full width.
+- The Explyn. mascot remains the assistant identity and animated waiting state.
+- Empty sessions clearly surface recent sessions, starter prompts, and active skills without becoming a marketing page.
 
-### Solution
+## Technical details
 
-**`src/pages/Report.tsx`** — Wait for credits to finish loading before running the analysis:
-- Destructure `loading` from `useCredits()` (rename to `creditsLoading` to avoid conflict with the existing `loading` state)
-- Add `creditsLoading` as a dependency check: don't call `analyzeCode` until credits are loaded
-- Change the `useEffect` to depend on `creditsLoading` and only trigger analysis once it becomes `false`
+- Store sessions and custom skills in versioned browser storage with safe parsing and an idempotent first-session bootstrap.
+- Use `/console/:sessionId` as the canonical session route; `/console` redirects to the latest or a newly created session.
+- Keep messages isolated per session and persist updates at the same point state changes.
+- Continue using the existing browser-configured AI transport; no hosted database or login dependency will be introduced.
+- Compose the transcript and prompt with AI Elements where compatible, preserving the current local streaming boundary.
+- Add migration support for the current global level/skills preferences and existing console entry points.
 
-Specifically:
-1. Change `const { hasCredits, useCredit, remaining } = useCredits();` to include `loading: creditsLoading`
-2. Update the `useEffect` to wait: if `creditsLoading` is true, return early. Once false, proceed with the existing logic (read sessionStorage, call `analyzeCode`).
-3. Add `creditsLoading` to the dependency array of that `useEffect`.
+## Verification
 
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `src/pages/Report.tsx` | Wait for credit loading to complete before checking `hasCredits` and starting analysis |
-
+- Create two sessions, send content in each, switch between them, and reload both URLs.
+- Verify search, rename, duplicate, export, delete, custom skill creation, and per-session skill toggling.
+- Check desktop and 393px phone layouts, keyboard focus, runtime errors, and the production build.
