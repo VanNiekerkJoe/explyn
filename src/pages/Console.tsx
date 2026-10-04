@@ -1,342 +1,457 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { ArrowLeft } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Download,
+  Menu,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import type { ChatStatus } from "ai";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
 import { getAIConfig, saveAIConfig, streamChat, AI_PRESETS, type ChatMessage } from "@/lib/ai";
 import ActivityStatus from "@/components/ActivityStatus";
 import ExplynMascot from "@/components/ExplynMascot";
-
-type Level = "beginner" | "intermediate" | "advanced";
-type Line =
-  | { kind: "user"; text: string }
-  | { kind: "assistant"; text: string }
-  | { kind: "system"; text: string };
-
-const SKILLS: { id: string; label: string; prompt: string }[] = [
-  { id: "explain", label: "Explain", prompt: "Explain code clearly, step by step, with a short summary first." },
-  { id: "debug", label: "Debug", prompt: "Hunt for bugs and edge cases; show the fix as a code block." },
-  { id: "teach", label: "Teach", prompt: "Act as a patient tutor: ask a quick check-question at the end." },
-  { id: "review", label: "Review", prompt: "Review code like a senior engineer: readability, naming, structure." },
-  { id: "refactor", label: "Refactor", prompt: "Suggest a cleaner refactor and explain why it is better." },
-  { id: "tests", label: "Tests", prompt: "Write unit tests covering the main paths and edge cases." },
-  { id: "security", label: "Security", prompt: "Point out security risks (injection, secrets, auth) and fixes." },
-];
+import {
+  BUILT_IN_SKILLS,
+  createConsoleMessage,
+  createConsoleSession,
+  createCustomSkill,
+  loadConsoleSessions,
+  loadCustomSkills,
+  messageText,
+  saveConsoleSessions,
+  saveCustomSkills,
+  type ConsoleLevel,
+  type ConsoleSession,
+  type ConsoleSkill,
+} from "@/lib/console-memory";
 
 const COMMANDS = [
-  { name: "/model", desc: "Pick or set the AI model" },
-  { name: "/skills", desc: "Toggle what the assistant focuses on" },
-  { name: "/level", desc: "Set explanation level" },
-  { name: "/beginner", desc: "Explain like I'm new to coding" },
-  { name: "/intermediate", desc: "University-level explanations" },
-  { name: "/advanced", desc: "Architecture-level explanations" },
-  { name: "/explain", desc: "Focus on explaining code" },
-  { name: "/debug", desc: "Focus on finding bugs" },
-  { name: "/teach", desc: "Focus on tutoring" },
-  { name: "/review", desc: "Focus on code review" },
-  { name: "/refactor", desc: "Focus on refactoring" },
-  { name: "/tests", desc: "Focus on writing tests" },
-  { name: "/security", desc: "Focus on security risks" },
-  { name: "/status", desc: "Show current model, skills and level" },
-  { name: "/clear", desc: "Clear the conversation" },
-  { name: "/settings", desc: "Open AI provider settings" },
-  { name: "/exit", desc: "Back to the hub" },
-  { name: "/help", desc: "Show all commands" },
-];
-
-const SKILLS_KEY = "explyn:skills";
-const LEVEL_KEY = "explyn:console-level";
+  ["/model", "Pick or set the AI model"], ["/skills", "Toggle or create skills"],
+  ["/level", "Set explanation level"], ["/beginner", "Explain for a new coder"],
+  ["/intermediate", "Use university-level detail"], ["/advanced", "Use architecture-level detail"],
+  ["/explain", "Focus on explanations"], ["/debug", "Focus on bugs"],
+  ["/teach", "Focus on tutoring"], ["/review", "Focus on code review"],
+  ["/refactor", "Focus on refactoring"], ["/tests", "Focus on tests"],
+  ["/security", "Focus on security"], ["/new", "Start a new session"],
+  ["/sessions", "Open session memory"], ["/rename", "Rename this session"],
+  ["/duplicate", "Duplicate this session"], ["/export", "Export this session"],
+  ["/status", "Show model, skills and level"], ["/clear", "Clear this session"],
+  ["/settings", "Open AI settings"], ["/exit", "Back to the hub"], ["/help", "Show all commands"],
+] as const;
 
 type Picker = null | "model" | "skills" | "level";
 
 const Console = () => {
   const navigate = useNavigate();
-  const [lines, setLines] = useState<Line[]>([]);
+  const { sessionId } = useParams();
+  const [sessions, setSessions] = useState<ConsoleSession[]>(() => loadConsoleSessions(getAIConfig().model));
+  const [customSkills, setCustomSkills] = useState<ConsoleSkill[]>(loadCustomSkills);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [model, setModel] = useState(getAIConfig().model);
-  const [skills, setSkills] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(SKILLS_KEY) || '["explain"]'); } catch { return ["explain"]; }
-  });
-  const [level, setLevel] = useState<Level>(() => (localStorage.getItem(LEVEL_KEY) as Level) || "beginner");
+  const [status, setStatus] = useState<ChatStatus>("ready");
   const [picker, setPicker] = useState<Picker>(null);
-  const [cursor, setCursor] = useState(0);
   const [models, setModels] = useState<string[]>([]);
+  const [cursor, setCursor] = useState(0);
+  const [search, setSearch] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [skillDialogOpen, setSkillDialogOpen] = useState(false);
+  const [skillName, setSkillName] = useState("");
+  const [skillInstructions, setSkillInstructions] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { localStorage.setItem(SKILLS_KEY, JSON.stringify(skills)); }, [skills]);
-  useEffect(() => { localStorage.setItem(LEVEL_KEY, level); }, [level]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [lines, loading]);
-  useEffect(() => { inputRef.current?.focus(); }, [picker]);
+  const active = sessions.find((session) => session.id === sessionId) ?? null;
+  const allSkills = useMemo(() => [...BUILT_IN_SKILLS, ...customSkills], [customSkills]);
 
-  const sys = (text: string) => setLines((p) => [...p, { kind: "system", text }]);
+  useEffect(() => {
+    if (!sessionId) navigate(`/console/${sessions[0].id}`, { replace: true });
+    else if (!active) {
+      const created = createConsoleSession(getAIConfig().model);
+      setSessions((previous) => {
+        const next = [created, ...previous];
+        saveConsoleSessions(next);
+        return next;
+      });
+      navigate(`/console/${created.id}`, { replace: true });
+    }
+  }, [active, navigate, sessionId, sessions]);
+
+  useEffect(() => { inputRef.current?.focus(); }, [sessionId, picker, status]);
+
+  const commit = useCallback((change: (session: ConsoleSession) => ConsoleSession) => {
+    if (!sessionId) return;
+    setSessions((previous) => {
+      const next = previous.map((session) => session.id === sessionId ? change(session) : session)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      saveConsoleSessions(next);
+      return next;
+    });
+  }, [sessionId]);
+
+  const updateActive = useCallback((patch: Partial<ConsoleSession>) => {
+    commit((session) => ({ ...session, ...patch, updatedAt: new Date().toISOString() }));
+  }, [commit]);
+
+  const addMessage = useCallback((role: "user" | "assistant" | "system", text: string) => {
+    commit((session) => ({
+      ...session,
+      messages: [...session.messages, createConsoleMessage(role, text)],
+      updatedAt: new Date().toISOString(),
+    }));
+  }, [commit]);
+
+  const newSession = useCallback((source?: ConsoleSession) => {
+    const created = source
+      ? { ...source, id: crypto.randomUUID(), title: `${source.title} copy`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), messages: source.messages.map((message) => ({ ...message, id: crypto.randomUUID() })) }
+      : createConsoleSession(getAIConfig().model);
+    setSessions((previous) => {
+      const next = [created, ...previous];
+      saveConsoleSessions(next);
+      return next;
+    });
+    setSidebarOpen(false);
+    navigate(`/console/${created.id}`);
+  }, [navigate]);
+
+  const renameSession = (session: ConsoleSession) => {
+    const title = window.prompt("Name this session", session.title)?.trim();
+    if (!title) return;
+    setSessions((previous) => {
+      const next = previous.map((item) => item.id === session.id ? { ...item, title, updatedAt: new Date().toISOString() } : item);
+      saveConsoleSessions(next);
+      return next;
+    });
+  };
+
+  const deleteSession = (session: ConsoleSession) => {
+    if (!window.confirm(`Delete “${session.title}”? This cannot be undone.`)) return;
+    let next = sessions.filter((item) => item.id !== session.id);
+    if (!next.length) next = [createConsoleSession(getAIConfig().model)];
+    saveConsoleSessions(next);
+    setSessions(next);
+    if (session.id === sessionId) navigate(`/console/${next[0].id}`, { replace: true });
+  };
+
+  const exportSession = (session: ConsoleSession) => {
+    const body = session.messages.map((message) => `## ${message.role === "assistant" ? "Explyn." : message.role === "user" ? "You" : "System"}\n\n${messageText(message)}`).join("\n\n");
+    const blob = new Blob([`# ${session.title}\n\n${body}`], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${session.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "explyn-session"}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const saveSkill = () => {
+    if (!skillName.trim() || !skillInstructions.trim()) return;
+    const skill = createCustomSkill(skillName, skillInstructions);
+    const next = [...customSkills, skill];
+    setCustomSkills(next);
+    saveCustomSkills(next);
+    updateActive({ skillIds: [...(active?.skillIds ?? []), skill.id] });
+    setSkillName(""); setSkillInstructions(""); setSkillDialogOpen(false);
+  };
+
+  const removeCustomSkill = (skill: ConsoleSkill) => {
+    const next = customSkills.filter((item) => item.id !== skill.id);
+    setCustomSkills(next); saveCustomSkills(next);
+    setSessions((previous) => {
+      const updated = previous.map((session) => ({ ...session, skillIds: session.skillIds.filter((id) => id !== skill.id) }));
+      saveConsoleSessions(updated); return updated;
+    });
+  };
 
   const loadModels = async () => {
-    const cfg = getAIConfig();
-    const presetModels = Array.from(new Set(AI_PRESETS.map((p) => p.model).filter(Boolean)));
-    if (!cfg.baseUrl) { setModels(presetModels); return; }
+    const config = getAIConfig();
+    const fallback = Array.from(new Set(AI_PRESETS.map((preset) => preset.model).filter(Boolean)));
+    if (!config.baseUrl) return setModels(fallback);
     try {
-      const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/models`, {
-        headers: cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {},
-      });
-      const data = await res.json();
-      const ids: string[] = (data?.data || data?.models || []).map((m: any) => m.id || m.name).filter(Boolean);
-      setModels(ids.length ? ids.slice(0, 200) : presetModels);
-    } catch {
-      setModels(presetModels);
-    }
+      const response = await fetch(`${config.baseUrl.replace(/\/+$/, "")}/models`, { headers: config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {} });
+      const data = await response.json();
+      const found = (data?.data || data?.models || []).map((item: { id?: string; name?: string }) => item.id || item.name).filter(Boolean);
+      setModels(found.length ? found.slice(0, 200) : fallback);
+    } catch { setModels(fallback); }
   };
 
-  const setActiveModel = (m: string) => {
-    saveAIConfig({ ...getAIConfig(), model: m });
-    setModel(m);
-    setPicker(null);
-    sys(`Model set to ${m}`);
+  const openPicker = (next: Picker) => {
+    setPicker(next); setInput("");
+    if (next === "model") void loadModels();
   };
 
-  // Slash suggestions while typing
-  const slashMatches = useMemo(() => {
-    if (picker || !input.startsWith("/") || input.includes(" ")) return [];
-    return COMMANDS.filter((c) => c.name.startsWith(input.toLowerCase()));
-  }, [input, picker]);
-
-  const pickerItems: { id: string; label: string; hint?: string; active?: boolean }[] = useMemo(() => {
-    const q = input.toLowerCase();
-    if (picker === "model")
-      return models.filter((m) => m.toLowerCase().includes(q)).map((m) => ({ id: m, label: m, active: m === model }));
-    if (picker === "skills")
-      return SKILLS.filter((s) => s.label.toLowerCase().includes(q)).map((s) => ({ id: s.id, label: s.label, hint: s.prompt, active: skills.includes(s.id) }));
-    if (picker === "level")
-      return (["beginner", "intermediate", "advanced"] as Level[]).map((l) => ({ id: l, label: l, active: l === level }));
+  const pickerItems = useMemo(() => {
+    if (!active) return [];
+    const query = input.toLowerCase();
+    if (picker === "model") return models.filter((item) => item.toLowerCase().includes(query)).map((item) => ({ id: item, label: item, hint: "", active: item === active.model }));
+    if (picker === "skills") return allSkills.filter((skill) => skill.name.toLowerCase().includes(query)).map((skill) => ({ id: skill.id, label: skill.name, hint: skill.instructions, active: active.skillIds.includes(skill.id) }));
+    if (picker === "level") return (["beginner", "intermediate", "advanced"] as ConsoleLevel[]).map((item) => ({ id: item, label: item, hint: "", active: item === active.level }));
     return [];
-  }, [picker, models, input, model, skills, level]);
+  }, [active, allSkills, input, models, picker]);
 
-  const listLen = picker ? pickerItems.length : slashMatches.length;
-  useEffect(() => { setCursor(0); }, [listLen, picker]);
-
-  const openPicker = (p: Picker) => {
-    setPicker(p);
-    setInput("");
-    if (p === "model") loadModels();
-  };
+  const slashMatches = useMemo(() => picker || !input.startsWith("/") || input.includes(" ") ? [] : COMMANDS.filter(([name]) => name.startsWith(input.toLowerCase())), [input, picker]);
+  const listLength = picker ? pickerItems.length : slashMatches.length;
+  useEffect(() => setCursor(0), [listLength, picker]);
 
   const choosePickerItem = (id: string) => {
-    if (picker === "model") setActiveModel(id);
-    else if (picker === "skills") setSkills((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-    else if (picker === "level") { setLevel(id as Level); setPicker(null); sys(`Level set to ${id}`); }
-  };
-
-  const setOnlySkill = (id: string) => {
-    setSkills([id]);
-    sys(`Skill set to ${SKILLS.find((s) => s.id === id)?.label ?? id} (others off)`);
+    if (!active) return;
+    if (picker === "model") {
+      saveAIConfig({ ...getAIConfig(), model: id }); updateActive({ model: id }); setPicker(null); addMessage("system", `Model set to ${id}`);
+    } else if (picker === "skills") {
+      updateActive({ skillIds: active.skillIds.includes(id) ? active.skillIds.filter((item) => item !== id) : [...active.skillIds, id] });
+    } else if (picker === "level") {
+      updateActive({ level: id as ConsoleLevel }); setPicker(null); addMessage("system", `Level set to ${id}`);
+    }
   };
 
   const runCommand = (raw: string) => {
-    const [cmd, ...rest] = raw.trim().split(/\s+/);
-    const arg = rest.join(" ");
-    const c = cmd.toLowerCase();
-    if (c === "/beginner" || c === "/intermediate" || c === "/advanced") {
-      setLevel(c.slice(1) as Level);
-      sys(`Level set to ${c.slice(1)}`);
-      setInput("");
-      return;
-    }
-    const skillCmd = SKILLS.find((s) => c === `/${s.id}`);
-    if (skillCmd) {
-      setOnlySkill(skillCmd.id);
-      setInput("");
-      return;
-    }
-    switch (c) {
-      case "/model": arg ? setActiveModel(arg) : openPicker("model"); break;
-      case "/skills": openPicker("skills"); break;
-      case "/level":
-        if (["beginner", "intermediate", "advanced"].includes(arg)) { setLevel(arg as Level); sys(`Level set to ${arg}`); }
-        else openPicker("level");
-        break;
-      case "/status":
-        sys(`model:   ${model || "none"}\nlevel:   ${level}\nskills:  ${skills.length ? skills.join(", ") : "none"}`);
-        break;
-      case "/clear": setLines([]); break;
-      case "/settings": navigate("/settings"); break;
-      case "/exit": navigate("/"); break;
-      case "/help": sys(COMMANDS.map((cm) => `${cm.name.padEnd(14)} ${cm.desc}`).join("\n")); break;
-      default: sys(`Unknown command ${cmd}. Type /help`);
+    if (!active) return;
+    const [command, ...rest] = raw.trim().split(/\s+/); const arg = rest.join(" "); const normalized = command.toLowerCase();
+    if (["/beginner", "/intermediate", "/advanced"].includes(normalized)) {
+      updateActive({ level: normalized.slice(1) as ConsoleLevel }); addMessage("system", `Level set to ${normalized.slice(1)}`);
+    } else {
+      const builtIn = BUILT_IN_SKILLS.find((skill) => normalized === `/${skill.id}`);
+      if (builtIn) { updateActive({ skillIds: [builtIn.id] }); addMessage("system", `Skill set to ${builtIn.name}`); }
+      else switch (normalized) {
+        case "/model": if (arg) choosePickerItem(arg); else openPicker("model"); break;
+        case "/skills": openPicker("skills"); break;
+        case "/level": if (["beginner", "intermediate", "advanced"].includes(arg)) { updateActive({ level: arg as ConsoleLevel }); addMessage("system", `Level set to ${arg}`); } else openPicker("level"); break;
+        case "/new": newSession(); break;
+        case "/sessions": setSidebarOpen(true); break;
+        case "/rename": renameSession(active); break;
+        case "/duplicate": newSession(active); break;
+        case "/export": exportSession(active); break;
+        case "/status": addMessage("system", `model: ${active.model || "none"}\nlevel: ${active.level}\nskills: ${active.skillIds.length ? active.skillIds.map((id) => allSkills.find((skill) => skill.id === id)?.name ?? id).join(", ") : "none"}`); break;
+        case "/clear": updateActive({ messages: [], title: "New session" }); break;
+        case "/settings": navigate("/settings"); break;
+        case "/exit": navigate("/"); break;
+        case "/help": addMessage("system", COMMANDS.map(([name, description]) => `${name.padEnd(14)} ${description}`).join("\n")); break;
+        default: addMessage("system", `Unknown command ${command}. Type /help`);
+      }
     }
     setInput("");
   };
 
   const send = async (text: string) => {
     const value = text.trim();
-    if (!value || loading) return;
+    if (!value || !active || status !== "ready") return;
     if (value.startsWith("/")) return runCommand(value);
-    const history: ChatMessage[] = lines
-      .filter((l) => l.kind !== "system")
-      .map((l) => ({ role: l.kind as "user" | "assistant", content: l.text }));
-    const activeSkills = SKILLS.filter((s) => skills.includes(s.id));
-    const system = `You are Explyn., a coding assistant for students. Explain at a ${level} level.\nActive skills:\n${activeSkills.map((s) => `- ${s.label}: ${s.prompt}`).join("\n") || "- General help"}\nUse markdown and fenced code blocks.`;
-    setLines((p) => [...p, { kind: "user", text: value }]);
-    setInput("");
-    setLoading(true);
-    let acc = "";
+    const history: ChatMessage[] = active.messages.filter((message) => message.role !== "system").map((message) => ({ role: message.role as "user" | "assistant", content: messageText(message) }));
+    const selected = allSkills.filter((skill) => active.skillIds.includes(skill.id));
+    const system = `You are Explyn., a coding assistant for students. Explain at a ${active.level} level.\nActive skills:\n${selected.map((skill) => `- ${skill.name}: ${skill.instructions}`).join("\n") || "- General help"}\nUse markdown and fenced code blocks.`;
+    const userMessage = createConsoleMessage("user", value);
+    const assistantMessage = createConsoleMessage("assistant", "");
+    const shouldTitle = active.messages.filter((message) => message.role === "user").length === 0;
+    commit((session) => ({ ...session, title: shouldTitle ? value.slice(0, 42) : session.title, messages: [...session.messages, userMessage], updatedAt: new Date().toISOString() }));
+    setInput(""); setStatus("submitted");
+    let accumulated = "";
     try {
       await streamChat([{ role: "system", content: system }, ...history, { role: "user", content: value }], (chunk) => {
-        acc += chunk;
-        setLines((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.kind === "assistant") return [...prev.slice(0, -1), { kind: "assistant", text: acc }];
-          return [...prev, { kind: "assistant", text: acc }];
+        accumulated += chunk; setStatus("streaming");
+        commit((session) => {
+          const exists = session.messages.some((message) => message.id === assistantMessage.id);
+          const updatedAssistant = { ...assistantMessage, parts: [{ type: "text" as const, text: accumulated }] };
+          return { ...session, messages: exists ? session.messages.map((message) => message.id === assistantMessage.id ? updatedAssistant : message) : [...session.messages, updatedAssistant], updatedAt: new Date().toISOString() };
         });
       });
-    } catch (e) {
-      sys(`Error: ${e instanceof Error ? e.message : "request failed"}`);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      addMessage("system", `Error: ${error instanceof Error ? error.message : "request failed"}`); setStatus("error");
+    } finally { setStatus("ready"); }
+  };
+
+  const onComposerKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (listLength && (event.key === "ArrowDown" || event.key === "ArrowUp")) { event.preventDefault(); setCursor((value) => (value + (event.key === "ArrowDown" ? 1 : -1) + listLength) % listLength); }
+    if (event.key === "Escape") { event.preventDefault(); setPicker(null); setInput(""); }
+    if (event.key === "Tab" && slashMatches.length) { event.preventDefault(); setInput(`${slashMatches[cursor][0]} `); }
+    if (event.key === "Enter" && !event.shiftKey && listLength) {
+      event.preventDefault();
+      if (picker) { const item = pickerItems[cursor]; if (item) choosePickerItem(item.id); }
+      else runCommand(slashMatches[cursor][0]);
     }
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (listLen > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-      e.preventDefault();
-      setCursor((c) => (c + (e.key === "ArrowDown" ? 1 : -1) + listLen) % listLen);
-      return;
-    }
-    if (e.key === "Escape") { setPicker(null); setInput(""); return; }
-    if (e.key === "Tab" && slashMatches.length) {
-      e.preventDefault();
-      setInput(slashMatches[cursor].name + " ");
-      return;
-    }
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (picker) {
-        const item = pickerItems[cursor];
-        if (item) choosePickerItem(item.id);
-        else if (picker === "model" && input.trim()) setActiveModel(input.trim());
-        return;
-      }
-      if (slashMatches.length && input !== slashMatches[cursor].name) return runCommand(slashMatches[cursor].name);
-      send(input);
-    }
-  };
+  const filteredSessions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return sessions;
+    return sessions.filter((session) => session.title.toLowerCase().includes(query) || session.messages.some((message) => messageText(message).toLowerCase().includes(query)));
+  }, [search, sessions]);
 
-  const md = {
-    code({ className, children, ...props }: any) {
-      const match = /language-(\w+)/.exec(className || "");
-      return match ? (
-        <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" customStyle={{ borderRadius: "0.5rem", fontSize: "0.78rem", background: "hsl(0 0% 6%)" }}>
-          {String(children).replace(/\n$/, "")}
-        </SyntaxHighlighter>
-      ) : (
-        <code className="bg-muted px-1 py-0.5 rounded text-xs" {...props}>{children}</code>
-      );
-    },
-  };
+  if (!active) return null;
+
+  const sessionRail = (
+    <aside className="flex h-full w-[286px] flex-col border-r border-border bg-background">
+      <div className="flex h-14 items-center gap-2 border-b border-border px-3">
+        <Button variant="outline" className="flex-1 justify-start" onClick={() => newSession()}><Plus /> New session</Button>
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(false)} aria-label="Close sessions"><X /></Button>
+      </div>
+      <div className="p-3">
+        <div className="flex items-center gap-2 border border-border bg-card px-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search memory" className="h-9 border-0 bg-transparent px-0 font-mono text-xs focus-visible:ring-0" />
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 pb-3">
+        <p className="px-2 pb-2 font-mono text-[10px] uppercase text-muted-foreground">Memory / {filteredSessions.length}</p>
+        {filteredSessions.map((session) => (
+          <div key={session.id} className={`group mb-1 flex items-center border ${session.id === active.id ? "border-foreground/30 bg-accent" : "border-transparent"}`}>
+            <Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start rounded-none px-2 py-2 text-left" onClick={() => { navigate(`/console/${session.id}`); setSidebarOpen(false); }}>
+              <span className="min-w-0">
+                <span className="block truncate font-mono text-xs">{session.title}</span>
+                <span className="mt-1 block text-[10px] text-muted-foreground">{session.messages.filter((message) => message.role !== "system").length} messages</span>
+              </span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`Actions for ${session.title}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => renameSession(session)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => newSession(session)}><Copy className="mr-2 h-4 w-4" />Duplicate</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportSession(session)}><Download className="mr-2 h-4 w-4" />Export Markdown</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteSession(session)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ))}
+        {!filteredSessions.length && <p className="px-2 py-8 text-center text-xs text-muted-foreground">No matching sessions.</p>}
+      </div>
+      <div className="border-t border-border p-3">
+        <Button variant="ghost" className="w-full justify-start" onClick={() => setSkillDialogOpen(true)}>Skills <span className="ml-auto text-xs text-muted-foreground">{allSkills.length}</span></Button>
+      </div>
+    </aside>
+  );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-mono">
-      <nav className="sticky top-0 z-20 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
-            <ArrowLeft className="h-4 w-4" /> Hub
-          </button>
-          <span className="text-sm font-bold tracking-tight">explyn<span className="text-muted-foreground">.</span>console</span>
-          <span className="text-[11px] text-muted-foreground hidden sm:block">/help</span>
-        </div>
-      </nav>
+    <div className="flex h-screen overflow-hidden bg-background font-mono text-foreground">
+      <div className="hidden md:block">{sessionRail}</div>
+      {sidebarOpen && <div className="fixed inset-0 z-40 md:hidden"><button className="absolute inset-0 bg-background/80" aria-label="Close sessions" onClick={() => setSidebarOpen(false)} /><div className="relative h-full animate-slide-in-right">{sessionRail}</div></div>}
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 space-y-5 text-sm">
-        {lines.length === 0 && (
-          <div className="grid py-10 gap-8 sm:grid-cols-[1fr_180px] sm:items-start">
-            <div className="space-y-4">
-              <pre className="text-foreground text-xs sm:text-sm leading-tight">{`  ___ __  __ ___ _  __   __ _  _
- | __|\\ \\/ /| _ \\ | \\ \\ / /| \\| |
- | _|  >  < |  _/ |__\\ V / | .\` |
- |___|/_/\\_\\|_| |____||_|  |_|\\_|.`}</pre>
-              <div className="text-muted-foreground space-y-1 text-xs">
-                {COMMANDS.map((c) => (
-                  <div key={c.name}><span className="text-foreground">{c.name.padEnd(14)}</span> {c.desc}</div>
-                ))}
-              </div>
-            </div>
-            <ExplynMascot className="mx-auto hidden h-44 w-44 sm:block" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <nav className="flex h-14 shrink-0 items-center justify-between border-b border-border px-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-1">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open sessions"><Menu /></Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")} aria-label="Back to hub"><ArrowLeft /></Button>
+            <div className="ml-1 min-w-0"><p className="truncate text-xs font-bold">{active.title}</p><p className="text-[9px] uppercase text-muted-foreground">saved in this browser</p></div>
           </div>
-        )}
-        {lines.map((l, i) =>
-          l.kind === "user" ? (
-            <div key={i} className="border-l-2 border-foreground pl-3 text-foreground whitespace-pre-wrap">{l.text}</div>
-          ) : l.kind === "system" ? (
-            <pre key={i} className="text-xs text-muted-foreground whitespace-pre-wrap">› {l.text}</pre>
-          ) : (
-            <div key={i} className="pl-3 border-l-2 border-border prose prose-invert prose-sm max-w-none font-sans prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>{l.text}</ReactMarkdown>
-            </div>
-          ),
-        )}
-        {loading && lines[lines.length - 1]?.kind === "user" && (
-          <ActivityStatus showMascot compact className="pl-3" />
-        )}
-        <div ref={endRef} />
-      </main>
+          <Button variant="ghost" className="h-8 text-xs" onClick={() => setSkillDialogOpen(true)}>Skills <span className="text-muted-foreground">{active.skillIds.length}</span></Button>
+        </nav>
 
-      <div className="sticky bottom-0 bg-background/90 backdrop-blur-xl pb-3 pt-2">
-        <div className="max-w-4xl mx-auto px-4">
-          {(listLen > 0 || picker) && (
-            <div className="mb-2 rounded-lg border border-border bg-card max-h-64 overflow-y-auto text-xs">
-              {picker && (
-                <div className="px-3 py-2 border-b border-border text-muted-foreground flex justify-between">
-                  <span>{picker === "model" ? "Select model (or type a name + Enter)" : picker === "skills" ? "Toggle skills — Enter to toggle" : "Select level"}</span>
-                  <span>esc</span>
+        <Conversation className="min-h-0">
+          <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 py-6">
+            {active.messages.length === 0 && (
+              <ConversationEmptyState className="min-h-[55vh] py-10" icon={<ExplynMascot className="h-36 w-36" />} title="Fresh session" description="Ask about code, paste an error, or use / for commands.">
+                <ExplynMascot className="mx-auto h-36 w-36" />
+                <div className="space-y-2 text-center"><h1 className="text-base font-bold">Fresh session</h1><p className="text-xs text-muted-foreground">Ask about code, paste an error, or use / for commands.</p></div>
+                <div className="flex flex-wrap justify-center gap-2 pt-2">
+                  {["Explain a closure", "Help me debug", "Teach me recursion"].map((prompt) => <Button key={prompt} variant="outline" size="sm" onClick={() => void send(prompt)}>{prompt}</Button>)}
                 </div>
-              )}
-              {picker
-                ? pickerItems.map((it, i) => (
-                    <button key={it.id} onMouseDown={(e) => { e.preventDefault(); choosePickerItem(it.id); }}
-                      className={`w-full text-left px-3 py-1.5 flex gap-3 ${i === cursor ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
-                      <span className="w-3">{it.active ? "●" : "○"}</span>
-                      <span className="text-foreground">{it.label}</span>
-                      {it.hint && <span className="truncate hidden sm:inline">{it.hint}</span>}
-                    </button>
-                  ))
-                : slashMatches.map((c, i) => (
-                    <button key={c.name} onMouseDown={(e) => { e.preventDefault(); runCommand(c.name); }}
-                      className={`w-full text-left px-3 py-1.5 flex gap-3 ${i === cursor ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
-                      <span className="text-foreground w-20">{c.name}</span><span>{c.desc}</span>
-                    </button>
-                  ))}
-              {picker === "model" && pickerItems.length === 0 && <div className="px-3 py-2 text-muted-foreground">Loading models…</div>}
-            </div>
-          )}
+              </ConversationEmptyState>
+            )}
+            {active.messages.map((message) => message.role === "system" ? (
+              <pre key={message.id} className="whitespace-pre-wrap border-l border-border pl-3 text-xs text-muted-foreground">› {messageText(message)}</pre>
+            ) : (
+              <Message key={message.id} from={message.role}>
+                <MessageContent className={message.role === "assistant" ? "font-sans" : "font-mono"}>
+                  {message.parts.map((part, index) => <MessageResponse key={`${message.id}-${index}`} isAnimating={status === "streaming" && message.id === active.messages.at(-1)?.id}>{part.text}</MessageResponse>)}
+                </MessageContent>
+              </Message>
+            ))}
+            {status === "submitted" && <ActivityStatus showMascot compact />}
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
 
-          <div className="rounded-lg border border-border bg-card focus-within:border-foreground/40 transition-colors">
-            <div className="flex items-start gap-2 px-3 pt-3">
-              <span className="text-foreground select-none">›</span>
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onKeyDown}
-                rows={Math.min(6, Math.max(1, input.split("\n").length))}
-                placeholder={picker ? "filter…" : "Ask anything, or type / for commands"}
-                className="flex-1 bg-transparent resize-none text-sm focus:outline-none placeholder:text-muted-foreground"
-              />
-            </div>
-            <div className="flex items-center gap-3 px-3 py-2 text-[11px] text-muted-foreground overflow-x-auto whitespace-nowrap">
-              <button onClick={() => openPicker("model")} className="hover:text-foreground"><span className="text-foreground">{model || "no model"}</span></button>
-              <span>·</span>
-              <button onClick={() => openPicker("skills")} className="hover:text-foreground">skills: {skills.length ? skills.join(", ") : "none"}</button>
-              <span>·</span>
-              <button onClick={() => openPicker("level")} className="hover:text-foreground">{level}</button>
-              <span className="ml-auto hidden sm:inline">enter send · shift+enter newline · tab complete</span>
-            </div>
+        <div className="shrink-0 border-t border-border bg-background/95 px-3 pb-3 pt-2 backdrop-blur-xl sm:px-4">
+          <div className="relative mx-auto max-w-3xl">
+            {(listLength > 0 || picker) && (
+              <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 max-h-64 overflow-y-auto border border-border bg-popover p-1 text-xs shadow-2xl">
+                {picker && <div className="flex justify-between border-b border-border px-2 py-2 text-muted-foreground"><span>{picker === "model" ? "Select model" : picker === "skills" ? "Toggle skills" : "Select level"}</span><span>esc</span></div>}
+                {(picker ? pickerItems : slashMatches.map(([id, hint]) => ({ id, label: id, hint, active: false }))).map((item, index) => (
+                  <Button key={item.id} variant="ghost" className={`h-auto w-full justify-start rounded-none px-2 py-2 text-left ${index === cursor ? "bg-accent" : ""}`} onMouseDown={(event) => { event.preventDefault(); picker ? choosePickerItem(item.id) : runCommand(item.id); }}>
+                    {picker && <span className="w-4">{item.active ? <Check className="h-3 w-3" /> : "○"}</span>}<span className="w-24 shrink-0 truncate text-foreground">{item.label}</span><span className="hidden truncate text-muted-foreground sm:block">{item.hint}</span>
+                  </Button>
+                ))}
+                {picker === "skills" && <Button variant="ghost" className="h-9 w-full justify-start border-t border-border" onClick={() => setSkillDialogOpen(true)}><Plus /> Create custom skill</Button>}
+              </div>
+            )}
+            <PromptInput onSubmit={({ text }) => send(text)} className="[&_[data-slot=input-group]]:rounded-sm [&_[data-slot=input-group]]:bg-card">
+              <PromptInputTextarea ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={onComposerKeyDown} placeholder={picker ? "Filter…" : "Ask anything, or type / for commands"} className="min-h-14 font-mono text-sm" />
+              <PromptInputFooter>
+                <PromptInputTools className="min-w-0 overflow-x-auto whitespace-nowrap text-[10px] text-muted-foreground">
+                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[10px]" onClick={() => openPicker("model")}>{active.model || "no model"}</Button>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[10px]" onClick={() => openPicker("skills")}>{active.skillIds.length} skills</Button>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[10px]" onClick={() => openPicker("level")}>{active.level}</Button>
+                </PromptInputTools>
+                <PromptInputSubmit status={status} disabled={!input.trim() || status !== "ready"} />
+              </PromptInputFooter>
+            </PromptInput>
           </div>
         </div>
       </div>
+
+      <Dialog open={skillDialogOpen} onOpenChange={setSkillDialogOpen}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader><DialogTitle className="font-mono">Skills</DialogTitle><DialogDescription>Skills are reusable instructions. Toggle them for this session or make your own.</DialogDescription></DialogHeader>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {allSkills.map((skill) => {
+              const enabled = active.skillIds.includes(skill.id);
+              return <div key={skill.id} className={`flex gap-3 border p-3 ${enabled ? "border-foreground/40 bg-accent" : "border-border"}`}>
+                <button type="button" className="min-w-0 flex-1 text-left" onClick={() => choosePickerItemForSkill(skill.id)}>
+                  <span className="flex items-center gap-2 text-sm font-bold">{enabled ? <Check className="h-4 w-4" /> : <span className="h-4 w-4 border border-muted-foreground" />}{skill.name}</span>
+                  <span className="mt-2 block font-sans text-xs leading-relaxed text-muted-foreground">{skill.instructions}</span>
+                </button>
+                {!skill.builtIn && <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeCustomSkill(skill)} aria-label={`Delete ${skill.name}`}><Trash2 /></Button>}
+              </div>;
+            })}
+          </div>
+          <div className="space-y-3 border-t border-border pt-4">
+            <p className="text-xs font-bold uppercase text-muted-foreground">Create a skill</p>
+            <Input value={skillName} onChange={(event) => setSkillName(event.target.value)} placeholder="Skill name" />
+            <textarea value={skillInstructions} onChange={(event) => setSkillInstructions(event.target.value)} placeholder="Tell Explyn. how to respond when this skill is active…" className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 font-sans text-sm outline-none focus:ring-1 focus:ring-ring" />
+          </div>
+          <DialogFooter><Button onClick={saveSkill} disabled={!skillName.trim() || !skillInstructions.trim()}><Plus /> Create and activate</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
+  function choosePickerItemForSkill(id: string) {
+    updateActive({ skillIds: active.skillIds.includes(id) ? active.skillIds.filter((item) => item !== id) : [...active.skillIds, id] });
+  }
 };
 
 export default Console;
