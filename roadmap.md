@@ -6,7 +6,7 @@
 - [x] Verify the redesigned homepage on desktop and phone.
 - [x] Introduce the Explyn mascot across the hub and AI learning surfaces.
 - [x] Replace generic waiting spinners with playful rotating activity states.
-- [ ] Add route-backed local conversation sessions.
-- [ ] Add session search, rename, duplicate, export, and delete controls.
-- [ ] Add built-in and user-created skills with per-session activation.
-- [ ] Verify session isolation and restoration on desktop and phone.
+- [x] Add route-backed local conversation sessions.
+- [x] Add session search, rename, duplicate, export, and delete controls.
+- [x] Add built-in and user-created skills with per-session activation.
+- [x] Verify session isolation and restoration on desktop and phone.
