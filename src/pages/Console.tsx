@@ -401,7 +401,7 @@ const Console = () => {
               <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 max-h-64 overflow-y-auto border border-border bg-popover p-1 text-xs shadow-2xl">
                 {picker && <div className="flex justify-between border-b border-border px-2 py-2 text-muted-foreground"><span>{picker === "model" ? "Select model" : picker === "skills" ? "Toggle skills" : "Select level"}</span><span>esc</span></div>}
                 {(picker ? pickerItems : slashMatches.map(([id, hint]) => ({ id, label: id, hint, active: false }))).map((item, index) => (
-                  <Button key={item.id} variant="ghost" className={`h-auto w-full justify-start rounded-none px-2 py-2 text-left ${index === cursor ? "bg-accent" : ""}`} onMouseDown={(event) => { event.preventDefault(); picker ? choosePickerItem(item.id) : runCommand(item.id); }}>
+                  <Button key={item.id} variant="ghost" className={`h-auto w-full justify-start rounded-none px-2 py-2 text-left ${index === cursor ? "bg-accent" : ""}`} onMouseDown={(event) => { event.preventDefault(); if (picker) choosePickerItem(item.id); else runCommand(item.id); }}>
                     {picker && <span className="w-4">{item.active ? <Check className="h-3 w-3" /> : "○"}</span>}<span className="w-24 shrink-0 truncate text-foreground">{item.label}</span><span className="hidden truncate text-muted-foreground sm:block">{item.hint}</span>
                   </Button>
                 ))}
