@@ -9,4 +9,4 @@
 - [x] Add route-backed local conversation sessions.
 - [x] Add session search, rename, duplicate, export, and delete controls.
 - [x] Add built-in and user-created skills with per-session activation.
-- [ ] Verify session isolation and restoration on desktop and phone.
+- [x] Verify session isolation and restoration on desktop and phone.
