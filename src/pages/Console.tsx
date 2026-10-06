@@ -63,19 +63,28 @@ import {
   type ConsoleSkill,
 } from "@/lib/console-memory";
 
-const COMMANDS = [
-  ["/model", "Pick or set the AI model"], ["/skills", "Toggle or create skills"],
-  ["/level", "Set explanation level"], ["/beginner", "Explain for a new coder"],
-  ["/intermediate", "Use university-level detail"], ["/advanced", "Use architecture-level detail"],
-  ["/explain", "Focus on explanations"], ["/debug", "Focus on bugs"],
-  ["/teach", "Focus on tutoring"], ["/review", "Focus on code review"],
-  ["/refactor", "Focus on refactoring"], ["/tests", "Focus on tests"],
-  ["/security", "Focus on security"], ["/new", "Start a new session"],
-  ["/sessions", "Open session memory"], ["/rename", "Rename this session"],
-  ["/duplicate", "Duplicate this session"], ["/export", "Export this session"],
-  ["/status", "Show model, skills and level"], ["/clear", "Clear this session"],
-  ["/settings", "Open AI settings"], ["/exit", "Back to the hub"], ["/help", "Show all commands"],
-] as const;
+import { CONSOLE_COMMANDS, findCommand, helpText, matchCommands, suggestCommand } from "@/lib/console-commands";
+import { importGithubRepo } from "@/lib/github";
+import { createProject, listProjects } from "@/lib/localdb";
+import { useAuth } from "@/lib/auth";
+
+const SHORTCUTS = `/            open command palette
+↑ / ↓        move through suggestions
+Tab          complete a command
+Enter        run / send
+Shift+Enter  new line
+Esc          close picker
+↑ (empty)    recall your last message`;
+
+const EXAMPLES = `/clone facebook/react          import a GitHub repo
+/tour vercel/next.js           clone + guided AI tour
+/eli5 recursion                simple explanation
+/quiz python lists             5-question quiz
+/challenge loops               hands-on exercise, then /hint or /solution
+/translate rust <code>         convert code
+/fix <code>                    find and fix bugs (or run alone on the last answer)
+/compare let vs const          side-by-side table
+/roadmap become a web developer`;
 
 type Picker = null | "model" | "skills" | "level";
 
@@ -224,7 +233,12 @@ const Console = () => {
     return [];
   }, [active, allSkills, input, models, picker]);
 
-  const slashMatches = useMemo(() => picker || !input.startsWith("/") || input.includes(" ") ? [] : COMMANDS.filter(([name]) => name.startsWith(input.toLowerCase())), [input, picker]);
+  const slashMatches = useMemo(() => picker || !input.startsWith("/") || input.includes(" ") ? [] : matchCommands(input).slice(0, 40), [input, picker]);
+  const argHint = useMemo(() => {
+    if (picker || !input.startsWith("/") || !input.includes(" ")) return null;
+    const c = findCommand(input.split(/\s+/)[0]);
+    return c ? `${c.name} ${c.args ?? ""} — ${c.description}` : null;
+  }, [input, picker]);
   const listLength = picker ? pickerItems.length : slashMatches.length;
   useEffect(() => setCursor(0), [listLength, picker]);
 
@@ -239,45 +253,113 @@ const Console = () => {
     }
   };
 
+  const lastAnswer = () => active ? messageText([...active.messages].reverse().find((m) => m.role === "assistant") ?? createConsoleMessage("assistant", "")) : "";
+  const lastQuestion = () => active ? messageText([...active.messages].reverse().find((m) => m.role === "user") ?? createConsoleMessage("user", "")) : "";
+
+  const cloneRepo = async (url: string, tour: boolean) => {
+    if (!user) { addMessage("system", "Sign in (or create a local account) on the home screen to save cloned repos."); return; }
+    addMessage("system", `Cloning ${url}…`); setStatus("submitted");
+    try {
+      const { owner, repo, files } = await importGithubRepo(url);
+      if (!files.length) throw new Error("No readable source files found.");
+      const project = createProject(user.id, `${owner}/${repo}`, files);
+      setStatus("ready");
+      addMessage("system", `Cloned ${owner}/${repo} — ${files.length} files saved locally.\nOpen it: /open ${repo}  ·  or visit /project/${project.id}`);
+      if (tour) {
+        const tree = files.map((f) => f.path).slice(0, 80).join("\n");
+        const readme = files.find((f) => /readme/i.test(f.path))?.content.slice(0, 3000) ?? "";
+        await ask(`Give me a guided tour of the GitHub repo ${owner}/${repo}. Explain what it does, the folder structure, the entry points, and where a beginner should start reading.\n\nFiles:\n${tree}\n\n${readme ? `README:\n${readme}` : ""}`, `/tour ${owner}/${repo}`);
+      }
+    } catch (error) {
+      setStatus("ready");
+      addMessage("system", `Clone failed: ${error instanceof Error ? error.message : "unknown error"}`);
+    }
+  };
+
   const runCommand = (raw: string) => {
     if (!active) return;
-    const [command, ...rest] = raw.trim().split(/\s+/); const arg = rest.join(" "); const normalized = command.toLowerCase();
-    if (["/beginner", "/intermediate", "/advanced"].includes(normalized)) {
-      updateActive({ level: normalized.slice(1) as ConsoleLevel }); addMessage("system", `Level set to ${normalized.slice(1)}`);
-    } else {
-      const builtIn = BUILT_IN_SKILLS.find((skill) => normalized === `/${skill.id}`);
-      if (builtIn) { updateActive({ skillIds: [builtIn.id] }); addMessage("system", `Skill set to ${builtIn.name}`); }
-      else switch (normalized) {
-        case "/model": if (arg) choosePickerItem(arg); else openPicker("model"); break;
-        case "/skills": openPicker("skills"); break;
-        case "/level": if (["beginner", "intermediate", "advanced"].includes(arg)) { updateActive({ level: arg as ConsoleLevel }); addMessage("system", `Level set to ${arg}`); } else openPicker("level"); break;
-        case "/new": newSession(); break;
-        case "/sessions": setSidebarOpen(true); break;
-        case "/rename": renameSession(active); break;
-        case "/duplicate": newSession(active); break;
-        case "/export": exportSession(active); break;
-        case "/status": addMessage("system", `model: ${active.model || "none"}\nlevel: ${active.level}\nskills: ${active.skillIds.length ? active.skillIds.map((id) => allSkills.find((skill) => skill.id === id)?.name ?? id).join(", ") : "none"}`); break;
-        case "/clear": updateActive({ messages: [], title: "New session" }); break;
-        case "/settings": navigate("/settings"); break;
-        case "/exit": navigate("/"); break;
-        case "/help": addMessage("system", COMMANDS.map(([name, description]) => `${name.padEnd(14)} ${description}`).join("\n")); break;
-        default: addMessage("system", `Unknown command ${command}. Type /help`);
-      }
-    }
+    const [command, ...rest] = raw.trim().split(/\s+/); const arg = rest.join(" ").trim();
+    const def = findCommand(command);
     setInput("");
+    if (!def) {
+      const guess = suggestCommand(command);
+      addMessage("system", `Unknown command ${command}.${guess ? ` Did you mean ${guess}?` : ""} Type /help`);
+      return;
+    }
+    const name = def.name;
+    if (def.prompt) {
+      const ctx = lastAnswer();
+      if (def.needsArg && !arg && !(def.useContext && ctx)) { setInput(`${name} `); addMessage("system", `Usage: ${name} ${def.args ?? ""}`); return; }
+      void ask(def.prompt(arg, ctx), raw.trim());
+      return;
+    }
+    if (def.needsArg && !arg) { setInput(`${name} `); addMessage("system", `Usage: ${name} ${def.args ?? ""}`); return; }
+    if (["/beginner", "/intermediate", "/advanced"].includes(name)) {
+      updateActive({ level: name.slice(1) as ConsoleLevel }); addMessage("system", `Level set to ${name.slice(1)}`); return;
+    }
+    const builtIn = BUILT_IN_SKILLS.find((skill) => name === `/${skill.id}`);
+    if (builtIn) { updateActive({ skillIds: [builtIn.id] }); addMessage("system", `Skill set to ${builtIn.name}`); return; }
+    switch (name) {
+      case "/model": if (arg) choosePickerItem(arg); else openPicker("model"); break;
+      case "/skills": openPicker("skills"); break;
+      case "/level": if (["beginner", "intermediate", "advanced"].includes(arg)) { updateActive({ level: arg as ConsoleLevel }); addMessage("system", `Level set to ${arg}`); } else openPicker("level"); break;
+      case "/provider": { const c = getAIConfig(); addMessage("system", `provider: ${c.baseUrl || "not configured"}\nmodel: ${c.model || "none"}\nuser: ${user?.username ?? "guest"}`); break; }
+      case "/clone": void cloneRepo(arg, false); break;
+      case "/repo-explain": void cloneRepo(arg, true); break;
+      case "/projects": {
+        const list = user ? listProjects(user.id) : [];
+        addMessage("system", list.length ? list.map((p) => `• ${p.name}`).join("\n") + "\n\n/open <name> to open one" : "No projects yet. Try /clone owner/repo");
+        break;
+      }
+      case "/open": {
+        const q = arg.toLowerCase();
+        const match = (user ? listProjects(user.id) : []).find((p) => p.name.toLowerCase().includes(q));
+        if (match) navigate(`/project/${match.id}`); else addMessage("system", `No project matching "${arg}". Try /projects`);
+        break;
+      }
+      case "/new": newSession(); break;
+      case "/sessions": setSidebarOpen(true); break;
+      case "/rename": if (arg) { updateActive({ title: arg }); addMessage("system", `Renamed to ${arg}`); } else renameSession(active); break;
+      case "/duplicate": newSession(active); break;
+      case "/export": exportSession(active); break;
+      case "/retry": { const q = lastQuestion(); if (!q) { addMessage("system", "Nothing to retry yet."); break; } commit((s) => { const idx = s.messages.map((m) => m.role).lastIndexOf("user"); return { ...s, messages: s.messages.slice(0, idx) }; }); void ask(q); break; }
+      case "/undo": commit((s) => { const idx = s.messages.map((m) => m.role).lastIndexOf("user"); return idx < 0 ? s : { ...s, messages: s.messages.slice(0, idx) }; }); break;
+      case "/copy": { const a = lastAnswer(); if (a) { void navigator.clipboard.writeText(a); addMessage("system", "Last answer copied."); } else addMessage("system", "No answer to copy yet."); break; }
+      case "/status": addMessage("system", `model: ${active.model || "none"}\nlevel: ${active.level}\nskills: ${active.skillIds.length ? active.skillIds.map((id) => allSkills.find((skill) => skill.id === id)?.name ?? id).join(", ") : "none"}\nmessages: ${active.messages.length}`); break;
+      case "/clear": updateActive({ messages: [], title: "New session" }); break;
+      case "/home": navigate("/"); break;
+      case "/upload": navigate("/upload"); break;
+      case "/dashboard": navigate("/dashboard"); break;
+      case "/courses": navigate("/courses"); break;
+      case "/learn": navigate("/learn"); break;
+      case "/practice": navigate("/practice"); break;
+      case "/tutor": navigate("/tutor"); break;
+      case "/settings": navigate("/settings"); break;
+      case "/help": addMessage("system", helpText(arg || undefined)); break;
+      case "/shortcuts": addMessage("system", SHORTCUTS); break;
+      case "/examples": addMessage("system", EXAMPLES); break;
+      case "/about": addMessage("system", `Explyn. — open-source, local-first coding tutor.\nBring your own AI in /settings. ${CONSOLE_COMMANDS.length} commands available — /help to list them.`); break;
+      default: addMessage("system", `${name} is not available here.`);
+    }
   };
 
   const send = async (text: string) => {
     const value = text.trim();
     if (!value || !active || status !== "ready") return;
     if (value.startsWith("/")) return runCommand(value);
+    await ask(value);
+  };
+
+  async function ask(prompt: string, display?: string) {
+    if (!active) return;
+    const value = prompt;
     const history: ChatMessage[] = active.messages.filter((message) => message.role !== "system").map((message) => ({ role: message.role as "user" | "assistant", content: messageText(message) }));
     const selected = allSkills.filter((skill) => active.skillIds.includes(skill.id));
     const system = `You are Explyn., a coding assistant for students. Explain at a ${active.level} level.\nActive skills:\n${selected.map((skill) => `- ${skill.name}: ${skill.instructions}`).join("\n") || "- General help"}\nUse markdown and fenced code blocks.`;
-    const userMessage = createConsoleMessage("user", value);
+    const userMessage = createConsoleMessage("user", display ?? value);
     const assistantMessage = createConsoleMessage("assistant", "");
     const shouldTitle = active.messages.filter((message) => message.role === "user").length === 0;
-    commit((session) => ({ ...session, title: shouldTitle ? value.slice(0, 42) : session.title, messages: [...session.messages, userMessage], updatedAt: new Date().toISOString() }));
+    commit((session) => ({ ...session, title: shouldTitle ? (display ?? value).slice(0, 42) : session.title, messages: [...session.messages, userMessage], updatedAt: new Date().toISOString() }));
     setInput(""); setStatus("submitted");
     let accumulated = "";
     try {
@@ -292,16 +374,17 @@ const Console = () => {
     } catch (error) {
       addMessage("system", `Error: ${error instanceof Error ? error.message : "request failed"}`); setStatus("error");
     } finally { setStatus("ready"); }
-  };
+  }
 
   const onComposerKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!input && !listLength && event.key === "ArrowUp") { const q = lastQuestion(); if (q) { event.preventDefault(); setInput(q); } return; }
     if (listLength && (event.key === "ArrowDown" || event.key === "ArrowUp")) { event.preventDefault(); setCursor((value) => (value + (event.key === "ArrowDown" ? 1 : -1) + listLength) % listLength); }
     if (event.key === "Escape") { event.preventDefault(); setPicker(null); setInput(""); }
-    if (event.key === "Tab" && slashMatches.length) { event.preventDefault(); setInput(`${slashMatches[cursor][0]} `); }
+    if (event.key === "Tab" && slashMatches.length) { event.preventDefault(); setInput(`${slashMatches[cursor].name} `); }
     if (event.key === "Enter" && !event.shiftKey && listLength) {
       event.preventDefault();
       if (picker) { const item = pickerItems[cursor]; if (item) choosePickerItem(item.id); }
-      else runCommand(slashMatches[cursor][0]);
+      else { const c = slashMatches[cursor]; if (c.needsArg) setInput(`${c.name} `); else runCommand(c.name); }
     }
   };
 
