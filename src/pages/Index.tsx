@@ -84,6 +84,14 @@ const Index = () => {
 
   const model = aiConnected ? getAIConfig().model : "not connected";
 
+  if (authLoading) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (!user && !skippedLogin) {
+    return <AuthGate onSkip={skipLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="pointer-events-none fixed inset-0 opacity-[0.045] [background-image:linear-gradient(hsl(var(--border))_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border))_1px,transparent_1px)] [background-size:28px_28px]" />
