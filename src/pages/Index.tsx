@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ExplynMascot from "@/components/ExplynMascot";
+import AuthGate from "@/components/AuthGate";
 import { useAuth } from "@/lib/auth";
 import { getAIConfig, isAIConfigured } from "@/lib/ai";
 
@@ -32,10 +33,20 @@ const quickCommands = [
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const commandRef = useRef<HTMLInputElement>(null);
   const [command, setCommand] = useState("");
   const [aiConnected, setAiConnected] = useState(() => isAIConfigured());
+  const [skippedLogin, setSkippedLogin] = useState(
+    () => sessionStorage.getItem("explyn:login-skip") === "1",
+  );
+
+  const skipLogin = () => {
+    try {
+      sessionStorage.setItem("explyn:login-skip", "1");
+    } catch {}
+    setSkippedLogin(true);
+  };
 
   useEffect(() => {
     const syncAI = () => setAiConnected(isAIConfigured());
@@ -72,6 +83,14 @@ const Index = () => {
   };
 
   const model = aiConnected ? getAIConfig().model : "not connected";
+
+  if (authLoading) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (!user && !skippedLogin) {
+    return <AuthGate onSkip={skipLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
