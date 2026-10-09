@@ -7,11 +7,15 @@ import {
   AI_PRESETS,
   clearAIConfig,
   getAIConfig,
+  listOllamaModels,
+  pullOllamaModel,
   saveAIConfig,
   testAIConnection,
   type AIConfig,
 } from "@/lib/ai";
 import { clearAllData, exportData, importData } from "@/lib/localdb";
+
+const QUICK_OLLAMA_MODEL = "qwen2.5:0.5b";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -20,6 +24,10 @@ const Settings = () => {
   const [presetId, setPresetId] = useState("openai");
   const [testing, setTesting] = useState(false);
   const [tested, setTested] = useState(false);
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [loadingOllamaModels, setLoadingOllamaModels] = useState(false);
+  const [quickModelStatus, setQuickModelStatus] = useState("");
+  const [installingQuickModel, setInstallingQuickModel] = useState(false);
 
   useEffect(() => {
     const existing = getAIConfig();
@@ -34,6 +42,7 @@ const Settings = () => {
   const applyPreset = (id: string) => {
     setPresetId(id);
     setTested(false);
+    setOllamaModels([]);
     const next = AI_PRESETS.find((p) => p.id === id)!;
     if (next.id !== "custom") {
       setConfig((prev) => ({ ...prev, baseUrl: next.baseUrl, model: next.model }));
@@ -43,6 +52,62 @@ const Settings = () => {
   const update = (patch: Partial<AIConfig>) => {
     setConfig((prev) => ({ ...prev, ...patch }));
     setTested(false);
+  };
+
+  const refreshOllamaModels = async () => {
+    setLoadingOllamaModels(true);
+    try {
+      const models = await listOllamaModels(config);
+      setOllamaModels(models);
+      if (!models.length) {
+        toast({
+          title: "No Ollama models found",
+          description: "Install one first, for example: ollama pull llama3.2",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Could not reach Ollama",
+        description: error instanceof Error
+          ? `${error.message} Make sure Ollama is running and allows requests from this app.`
+          : "Make sure Ollama is running and allows requests from this app.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingOllamaModels(false);
+    }
+  };
+
+  const installAndTestQuickModel = async () => {
+    setInstallingQuickModel(true);
+    setQuickModelStatus("Connecting to Ollama…");
+    setTested(false);
+    const quickConfig = { ...config, model: QUICK_OLLAMA_MODEL };
+    try {
+      await pullOllamaModel(config, QUICK_OLLAMA_MODEL, (status, completed, total) => {
+        const percent = total ? Math.floor((completed ?? 0) / total * 100) : 0;
+        setQuickModelStatus(total ? `${status} · ${percent}%` : status);
+      });
+      setQuickModelStatus("Testing the model…");
+      const reply = await testAIConnection(quickConfig);
+      saveAIConfig(quickConfig);
+      setConfig(quickConfig);
+      setOllamaModels((models) => Array.from(new Set([...models, QUICK_OLLAMA_MODEL])));
+      setTested(true);
+      toast({ title: "Local AI is ready", description: `Ollama replied: "${reply.slice(0, 60)}"` });
+    } catch (error) {
+      toast({
+        title: "Could not start the quick local model",
+        description: error instanceof Error
+          ? `${error.message} Make sure Ollama is installed and running.`
+          : "Make sure Ollama is installed and running.",
+        variant: "destructive",
+      });
+    } finally {
+      setInstallingQuickModel(false);
+      setQuickModelStatus("");
+    }
   };
 
   const save = () => {
@@ -153,6 +218,43 @@ const Settings = () => {
                 ))}
               </div>
               <p className="text-[11px] text-muted-foreground mt-2.5">{preset.hint}</p>
+              {presetId === "ollama" && (
+                <div className="mt-4 rounded-xl border border-border/60 bg-background/50 p-4 text-sm">
+                  <p className="font-medium">Run AI on this machine</p>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-muted-foreground">
+                    <li>
+                      <a
+                        href="https://ollama.com/download"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-foreground underline underline-offset-4"
+                      >
+                        Install Ollama
+                      </a>
+                      , then start it.
+                    </li>
+                    <li>Download and test a lightweight model here, or select one you already have below.</li>
+                  </ol>
+                  <button
+                    type="button"
+                    onClick={() => void installAndTestQuickModel()}
+                    disabled={installingQuickModel || !config.baseUrl}
+                    className="btn-primary mt-4 text-sm disabled:opacity-50"
+                  >
+                    {installingQuickModel
+                      ? <><Loader2 className="h-4 w-4 animate-spin" />{quickModelStatus || "Preparing model…"}</>
+                      : <><Download className="h-4 w-4" />Download &amp; test {QUICK_OLLAMA_MODEL}</>}
+                  </button>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    About 400 MB; downloaded once and stored by Ollama on this machine.
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    If the browser blocks the connection, allow this app’s origin in Ollama’s
+                    <code className="mx-1 font-mono">OLLAMA_ORIGINS</code> setting and restart Ollama.
+                    Prompts are sent to your local Ollama server.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -166,13 +268,32 @@ const Settings = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block uppercase tracking-wider">Model</label>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label htmlFor="ai-model" className="text-xs text-muted-foreground block uppercase tracking-wider">Model</label>
+                  {presetId === "ollama" && (
+                    <button
+                      type="button"
+                      onClick={() => void refreshOllamaModels()}
+                      disabled={loadingOllamaModels || installingQuickModel || !config.baseUrl}
+                      className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+                    >
+                      {loadingOllamaModels ? "Loading…" : "Refresh installed models"}
+                    </button>
+                  )}
+                </div>
                 <Input
+                  id="ai-model"
                   value={config.model}
                   onChange={(e) => update({ model: e.target.value })}
                   placeholder="gpt-4o-mini"
+                  list={presetId === "ollama" && ollamaModels.length ? "ollama-models" : undefined}
                   className="bg-card border-border rounded-lg font-mono text-xs sm:text-sm"
                 />
+                {presetId === "ollama" && ollamaModels.length > 0 && (
+                  <datalist id="ollama-models">
+                    {ollamaModels.map((model) => <option key={model} value={model} />)}
+                  </datalist>
+                )}
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block uppercase tracking-wider">

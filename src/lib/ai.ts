@@ -245,3 +245,71 @@ export async function testAIConnection(config: AIConfig): Promise<string> {
   const data = await response.json();
   return (data.choices?.[0]?.message?.content ?? "").trim() || "ok";
 }
+
+/** Lists the models installed in a local Ollama instance. */
+export async function listOllamaModels(config: AIConfig): Promise<string[]> {
+  const base = config.baseUrl.trim().replace(/\/+$/, "").replace(/\/v1$/i, "");
+  if (!base) throw new Error("Add the Ollama server address first.");
+
+  const response = await fetch(`${base}/api/tags`);
+  if (!response.ok) throw new Error(await readError(response));
+
+  const data = (await response.json()) as {
+    models?: { name?: string; model?: string }[];
+  };
+  return Array.from(
+    new Set(
+      (data.models ?? [])
+        .map((model) => model.name || model.model)
+        .filter((model): model is string => Boolean(model)),
+    ),
+  );
+}
+
+/** Downloads a model through Ollama and reports its current pull status. */
+export async function pullOllamaModel(
+  config: AIConfig,
+  model: string,
+  onProgress: (status: string, completed?: number, total?: number) => void,
+): Promise<void> {
+  const base = config.baseUrl.trim().replace(/\/+$/, "").replace(/\/v1$/i, "");
+  if (!base) throw new Error("Add the Ollama server address first.");
+
+  const response = await fetch(`${base}/api/pull`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, stream: true }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  if (!response.body) throw new Error("Ollama did not return download progress.");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  const reportLine = (line: string) => {
+    if (!line.trim()) return;
+    const progress = JSON.parse(line) as {
+      status?: string;
+      completed?: number;
+      total?: number;
+      error?: string;
+    };
+    if (progress.error) throw new Error(progress.error);
+    onProgress(progress.status ?? "Downloading model", progress.completed, progress.total);
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    let newline = buffer.indexOf("\n");
+    while (newline !== -1) {
+      const line = buffer.slice(0, newline);
+      buffer = buffer.slice(newline + 1);
+      reportLine(line);
+      newline = buffer.indexOf("\n");
+    }
+    if (done) break;
+  }
+  if (buffer.trim()) reportLine(buffer);
+}

@@ -24,3 +24,14 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+### Use a local AI with Ollama
+
+Explyn can send AI requests directly from your browser to a local [Ollama](https://ollama.com/download) server:
+
+1. Install and start Ollama.
+2. Download a model, for example `ollama pull llama3.2`.
+3. In Explyn, open **Settings**, choose **Ollama (local)**, refresh installed models, and select one.
+4. Choose **Test & save**. The same model is then used by the console and the app’s other AI features.
+
+The default Ollama address is `http://localhost:11434/v1`. If your browser reports a connection or CORS error, configure Ollama’s `OLLAMA_ORIGINS` to allow the origin Explyn is running on, then restart Ollama. Prompts go directly from the browser to Ollama; they are not routed through a hosted AI service.
