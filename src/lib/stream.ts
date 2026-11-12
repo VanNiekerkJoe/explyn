@@ -6,6 +6,7 @@ import {
   ELEMENT_SYSTEM_PROMPT,
   elementUserPrompt,
   type LearnMode,
+  type CourseContext,
 } from "@/lib/prompts";
 
 /** Tutor / lesson / challenge / feedback streaming used by the learning pages. */
@@ -16,10 +17,11 @@ export async function streamLearn(
     language: string;
     level: string;
     topic?: string;
+    course?: CourseContext;
   },
   onDelta: (text: string) => void,
 ) {
-  const system = learnSystemPrompt(body.mode, body.level, body.language, body.topic);
+  const system = learnSystemPrompt(body.mode, body.level, body.language, body.topic, body.course);
   await streamChat([{ role: "system", content: system }, ...body.messages], onDelta);
 }
 

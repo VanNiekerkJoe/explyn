@@ -10,3 +10,5 @@
 - [x] Add session search, rename, duplicate, export, and delete controls.
 - [x] Add built-in and user-created skills with per-session activation.
 - [x] Verify session isolation and restoration on desktop and phone.
+- [x] Improve course lessons with full curriculum context and stronger teaching structure.
+- [x] Make tutor replies adaptive, direct, and non-repetitive; verify learning prompts.

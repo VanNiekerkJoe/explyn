@@ -60,6 +60,11 @@ const Course = () => {
           language: course.language,
           level,
           topic: l.topic,
+          course: {
+            title: course.title,
+            lessonIndex: course.lessons.findIndex((courseLesson) => courseLesson.id === l.id),
+            lessons: course.lessons.map(({ title, topic }) => ({ title, topic })),
+          },
         },
         (chunk) => setLesson((prev) => prev + chunk),
       );
